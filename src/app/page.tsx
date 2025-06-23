@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/header';
 import { Alerts } from '@/components/alerts';
@@ -19,7 +19,7 @@ export default function Home() {
       loading: () => <div className="aspect-video w-full rounded-md bg-muted animate-pulse" />
   }), []);
 
-  const handleLocationSelect = async (lat: number, lon: number) => {
+  const handleLocationSelect = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
     setAnalysis(null);
     try {
@@ -35,7 +35,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background font-body">

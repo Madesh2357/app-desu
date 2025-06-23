@@ -23,19 +23,30 @@ function LocationMarker({ onLocationSelect }: LocationMarkerProps) {
     const map = useMap();
   
     useEffect(() => {
+      const onLocationFound = (e: L.LocationEvent) => {
+        setPosition(e.latlng);
+        map.flyTo(e.latlng, map.getZoom());
+        onLocationSelect(e.latlng.lat, e.latlng.lng);
+      };
+      
+      const onMapClick = (e: L.LeafletMouseEvent) => {
+        setPosition(e.latlng);
+        map.flyTo(e.latlng, map.getZoom());
+        onLocationSelect(e.latlng.lat, e.latlng.lng);
+      };
+
+      map.on('locationfound', onLocationFound);
+      map.on('click', onMapClick);
+
       // Locate user on initial load
-      map.locate().on("locationfound", function (e) {
-        setPosition(e.latlng);
-        map.flyTo(e.latlng, map.getZoom());
-        onLocationSelect(e.latlng.lat, e.latlng.lng);
-      });
+      map.locate();
   
-      // Handle map clicks
-      map.on('click', function(e) {
-        setPosition(e.latlng);
-        map.flyTo(e.latlng, map.getZoom());
-        onLocationSelect(e.latlng.lat, e.latlng.lng);
-      });
+      // Cleanup function to remove listeners on component unmount
+      return () => {
+        map.off('locationfound', onLocationFound);
+        map.off('click', onMapClick);
+        map.stopLocate();
+      };
     }, [map, onLocationSelect]);
   
     return position === null ? null : (
