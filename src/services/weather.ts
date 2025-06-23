@@ -39,7 +39,7 @@ export interface WeatherData {
 
 export async function getWeatherData(lat: number, lon: number): Promise<WeatherData> {
   if (!API_KEY) {
-    throw new Error('OpenWeather API key is not configured.');
+    throw new Error('OpenWeather API key is not configured. Please add OPENWEATHER_API_KEY=your_key_here to the .env file in the project root directory.');
   }
 
   const url = `${BASE_URL}?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
