@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -21,33 +21,24 @@ interface LocationMarkerProps {
 function LocationMarker({ onLocationSelect }: LocationMarkerProps) {
     const [position, setPosition] = useState<L.LatLng | null>(null);
     const map = useMap();
-  
+
+    useMapEvents({
+        click(e) {
+            setPosition(e.latlng);
+            map.flyTo(e.latlng, map.getZoom());
+            onLocationSelect(e.latlng.lat, e.latlng.lng);
+        },
+        locationfound(e) {
+            setPosition(e.latlng);
+            map.flyTo(e.latlng, map.getZoom());
+            onLocationSelect(e.latlng.lat, e.latlng.lng);
+        },
+    });
+
+    // useEffect to run locate only once on mount
     useEffect(() => {
-      const onLocationFound = (e: L.LocationEvent) => {
-        setPosition(e.latlng);
-        map.flyTo(e.latlng, map.getZoom());
-        onLocationSelect(e.latlng.lat, e.latlng.lng);
-      };
-      
-      const onMapClick = (e: L.LeafletMouseEvent) => {
-        setPosition(e.latlng);
-        map.flyTo(e.latlng, map.getZoom());
-        onLocationSelect(e.latlng.lat, e.latlng.lng);
-      };
-
-      map.on('locationfound', onLocationFound);
-      map.on('click', onMapClick);
-
-      // Locate user on initial load
-      map.locate();
-  
-      // Cleanup function to remove listeners on component unmount
-      return () => {
-        map.off('locationfound', onLocationFound);
-        map.off('click', onMapClick);
-        map.stopLocate();
-      };
-    }, [map, onLocationSelect]);
+        map.locate();
+    }, [map]);
   
     return position === null ? null : (
       <Marker position={position}>

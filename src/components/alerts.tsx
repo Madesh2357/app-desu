@@ -14,10 +14,10 @@ export function Alerts() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-start space-x-4 rounded-md border border-amber-500/50 bg-amber-500/10 p-4">
+        <div className="flex items-start space-x-4 rounded-md border border-accent/50 bg-accent/10 p-4">
           <TriangleAlert className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
           <div className="flex-1 space-y-1">
-            <p className="text-sm font-semibold text-accent-foreground/80">
+            <p className="text-sm font-semibold text-accent">
               High Cyclone Probability
             </p>
             <p className="text-sm text-muted-foreground">

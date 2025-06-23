@@ -45,10 +45,10 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
 
   const probabilityColor =
     analysis.cycloneProbability > 75
-      ? "text-red-500"
+      ? "text-destructive"
       : analysis.cycloneProbability > 50
-      ? "text-yellow-500"
-      : "text-green-500";
+      ? "text-accent"
+      : "text-primary";
 
   return (
     <Card>
