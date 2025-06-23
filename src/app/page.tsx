@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/header';
 import { Alerts } from '@/components/alerts';
@@ -9,15 +9,15 @@ import { fetchWeatherAnalysis } from '@/app/actions';
 import type { GetWeatherAnalysisOutput } from '@/ai/flows/get-weather-analysis';
 import { useToast } from "@/hooks/use-toast";
 
+const WeatherMap = dynamic(() => import('@/components/weather-map').then(mod => mod.WeatherMap), {
+    ssr: false,
+    loading: () => <div className="aspect-video w-full rounded-md bg-muted animate-pulse" />
+});
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<GetWeatherAnalysisOutput | null>(null);
   const { toast } = useToast();
-
-  const WeatherMap = useMemo(() => dynamic(() => import('@/components/weather-map').then(mod => mod.WeatherMap), {
-      ssr: false,
-      loading: () => <div className="aspect-video w-full rounded-md bg-muted animate-pulse" />
-  }), []);
 
   const handleLocationSelect = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
