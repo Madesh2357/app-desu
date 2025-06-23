@@ -17,9 +17,13 @@ const GetWeatherAnalysisInputSchema = z.object({
 export type GetWeatherAnalysisInput = z.infer<typeof GetWeatherAnalysisInputSchema>;
 
 const GetWeatherAnalysisOutputSchema = z.object({
-  analysis: z.string().describe("A concise summary of the current weather conditions and a short-term prediction, focusing on potential cyclone formation. Mention key factors like wind speed, pressure, and humidity."),
-  cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present, as a percentage from 0 to 100."),
-  recommendations: z.string().describe("Actionable recommendations for individuals in the area, particularly for fishermen or people in coastal regions. E.g., 'Safe to go fishing', 'Advised to return to shore', 'Immediate evacuation recommended'."),
+    temperature: z.number().describe("The current temperature in Celsius."),
+    windSpeed: z.string().describe("The current wind speed, including units (e.g., '15 km/h')."),
+    windDirection: z.string().describe("The current wind direction (e.g., 'from the SW')."),
+    humidity: z.number().describe("The current humidity as a percentage."),
+    cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present, as a percentage from 0 to 100."),
+    forecast: z.string().describe("A detailed weather forecast for the next 72 hours, including changes in conditions, precipitation, and any significant weather events. Format this as a readable, multi-line string."),
+    recommendations: z.string().describe("Actionable recommendations for individuals in the area, particularly for fishermen or people in coastal regions, based on the overall forecast and cyclone risk. E.g., 'Safe to go fishing', 'Advised to return to shore', 'Immediate evacuation recommended'."),
 });
 export type GetWeatherAnalysisOutput = z.infer<typeof GetWeatherAnalysisOutputSchema>;
 
@@ -40,13 +44,13 @@ const prompt = ai.definePrompt({
   Latitude: {{{lat}}}
   Longitude: {{{lon}}}
 
-  Using your access to real-time weather data, please:
-  1.  Find the current weather conditions for this location.
-  2.  Provide a concise weather analysis, focusing on identifying the potential for cyclone development. Mention key factors like wind speed, atmospheric pressure, and humidity.
-  3.  Estimate the probability of a cyclone (from 0 to 100%). Use indicators like high wind speeds (> 60 km/h), low atmospheric pressure (< 1000 hPa), and high humidity to inform your probability.
-  4.  Give specific, actionable recommendations for people in the area, especially those near the coast or at sea (e.g., 'Safe to go fishing', 'Advised to return to shore', 'Immediate evacuation recommended').
-  
-  Prioritize safety in your recommendations. It is better to be safe than sorry.
+  Using your access to real-time weather data, please provide the following information:
+  1.  **Temperature**: The current temperature in Celsius.
+  2.  **Wind**: The current wind speed (in km/h) and its direction.
+  3.  **Humidity**: The current relative humidity as a percentage.
+  4.  **Cyclone Probability**: An estimated probability (from 0 to 100%) of a cyclone forming or being present. Use indicators like high wind speeds (> 60 km/h), low atmospheric pressure (< 1000 hPa), and high humidity to inform your probability.
+  5.  **72-Hour Forecast**: A detailed, multi-line forecast for the next 72 hours.
+  6.  **Recommendations**: Based on the entire analysis, provide specific, actionable recommendations for people in the area, especially those near the coast or at sea. Prioritize safety.
   `,
 });
 

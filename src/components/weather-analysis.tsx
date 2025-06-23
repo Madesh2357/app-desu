@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { GetWeatherAnalysisOutput } from "@/ai/flows/get-weather-analysis";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Zap, ShieldAlert, BadgeInfo } from "lucide-react";
+import { Thermometer, Wind, Droplets, ShieldAlert, CalendarClock, BadgeInfo } from "lucide-react";
 
 type WeatherAnalysisProps = {
   analysis: GetWeatherAnalysisOutput | null;
@@ -17,11 +17,17 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
           <CardTitle className="text-base font-headline font-medium">Weather Analysis</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-16 w-full" />
-          <Separator />
-          <Skeleton className="h-4 w-1/3" />
-          <Skeleton className="h-10 w-full" />
+            <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+            <Separator />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-10 w-1/2" />
+            <Separator />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-20 w-full" />
         </CardContent>
       </Card>
     );
@@ -56,9 +62,28 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
         <CardTitle className="text-base font-headline font-medium">Weather Analysis</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-sm mb-2 flex items-center"><Zap className="mr-2 h-4 w-4"/> AI Analysis</h3>
-          <p className="text-sm text-muted-foreground">{analysis.analysis}</p>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+                <Thermometer className="h-5 w-5 text-muted-foreground" />
+                <div>
+                    <p className="text-muted-foreground">Temperature</p>
+                    <p className="font-semibold">{analysis.temperature}°C</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <Wind className="h-5 w-5 text-muted-foreground" />
+                <div>
+                    <p className="text-muted-foreground">Wind</p>
+                    <p className="font-semibold">{analysis.windSpeed} {analysis.windDirection}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <Droplets className="h-5 w-5 text-muted-foreground" />
+                <div>
+                    <p className="text-muted-foreground">Humidity</p>
+                    <p className="font-semibold">{analysis.humidity}%</p>
+                </div>
+            </div>
         </div>
         <Separator />
         <div>
@@ -67,8 +92,8 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
         </div>
         <Separator />
         <div>
-          <h3 className="font-semibold text-sm mb-2 flex items-center"><BadgeInfo className="mr-2 h-4 w-4"/> Recommendations</h3>
-          <p className="text-sm text-muted-foreground">{analysis.recommendations}</p>
+          <h3 className="font-semibold text-sm mb-2 flex items-center"><CalendarClock className="mr-2 h-4 w-4"/> 72-Hour Forecast</h3>
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.forecast}</p>
         </div>
       </CardContent>
     </Card>
