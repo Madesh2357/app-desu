@@ -1,7 +1,7 @@
 'use server';
 
-import { validateFuzzyLogic, ValidateFuzzyLogicInput } from '@/ai/flows/validate-fuzzy-logic';
+import { getWeatherAnalysis, GetWeatherAnalysisInput } from '@/ai/flows/get-weather-analysis';
 
-export async function validateCyclonePrediction(input: ValidateFuzzyLogicInput) {
-    return await validateFuzzyLogic(input);
+export async function fetchWeatherAnalysis(input: GetWeatherAnalysisInput) {
+    return await getWeatherAnalysis(input);
 }

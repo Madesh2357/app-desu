@@ -1,4 +1,4 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/validate-fuzzy-logic.ts';
+import '@/ai/flows/get-weather-analysis.ts';
