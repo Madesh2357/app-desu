@@ -9,22 +9,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { getWeatherData, type WeatherData } from '@/services/weather';
-
-const getRealtimeWeatherData = ai.defineTool(
-    {
-        name: 'getRealtimeWeatherData',
-        description: 'Get the current weather conditions for a specific latitude and longitude.',
-        inputSchema: z.object({
-            lat: z.number(),
-            lon: z.number(),
-        }),
-        outputSchema: z.custom<WeatherData>(),
-    },
-    async ({lat, lon}) => {
-        return await getWeatherData(lat, lon);
-    }
-);
 
 const GetWeatherAnalysisInputSchema = z.object({
   lat: z.number().describe('The latitude of the location.'),
@@ -53,21 +37,19 @@ const prompt = ai.definePrompt({
   name: 'weatherAnalysisPrompt',
   input: {schema: GetWeatherAnalysisInputSchema},
   output: {schema: GetWeatherAnalysisOutputSchema},
-  tools: [getRealtimeWeatherData],
   prompt: `You are an expert meteorologist specializing in tropical cyclones and maritime weather.
   Your task is to provide a detailed weather analysis for the given geographical coordinates.
-
-  First, use the getRealtimeWeatherData tool to fetch the current weather data for the provided latitude and longitude.
+  Use your internal knowledge to generate the current weather conditions and forecast.
 
   Location:
   Latitude: {{{lat}}}
   Longitude: {{{lon}}}
 
-  Once you have the weather data from the tool, analyze it and provide the following information:
+  Based on the location, provide the following information:
   1.  **Temperature**: The current temperature in Celsius.
-  2.  **Wind**: The current wind speed (in km/h) and its direction. Convert wind degrees from the data into a cardinal direction (e.g., SW, N, E).
+  2.  **Wind**: The current wind speed (in km/h) and its direction (e.g., SW, N, E).
   3.  **Humidity**: The current relative humidity as a percentage.
-  4.  **Cyclone Probability**: An estimated probability (from 0 to 100%) of a cyclone forming or being present. Use indicators like high wind speeds (> 60 km/h), low atmospheric pressure (< 1000 hPa), and high humidity to inform your probability.
+  4.  **Cyclone Probability**: An estimated probability (from 0 to 100%) of a cyclone forming or being present. Use indicators like high wind speeds (> 60 km/h), low atmospheric pressure, and high humidity to inform your probability.
   5.  **72-Hour Forecast**: A detailed, multi-line forecast for the next 72 hours.
   6.  **Recommendations**: Based on the entire analysis, provide specific, actionable recommendations for people in the area, especially those near the coast or at sea. Prioritize safety.
   `,

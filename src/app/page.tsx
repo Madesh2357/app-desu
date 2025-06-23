@@ -31,8 +31,6 @@ export default function Home() {
 
       if (error.status === 'FAILED_PRECONDITION') {
         description = "The Google AI API key is missing or invalid. Please add GOOGLE_API_KEY=your_key_here to the .env file and restart the server."
-      } else if (error.message?.includes('401')) {
-        description = "The provided OpenWeather API key is invalid. Please verify the key and restart the server.";
       } else if (error instanceof Error) {
         description = error.message;
       }
