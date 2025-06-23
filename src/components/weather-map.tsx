@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -51,7 +51,7 @@ interface WeatherMapProps {
   onLocationSelect: (lat: number, lon: number) => void;
 }
 
-export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
+export const WeatherMap = memo(function WeatherMap({ onLocationSelect }: WeatherMapProps) {
   return (
     <MapContainer center={[20.5937, 78.9629]} zoom={5} scrollWheelZoom={true} style={{ height: '100%', width: '100%', minHeight: '400px', borderRadius: '0.5rem' }}>
       <TileLayer
@@ -61,4 +61,5 @@ export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
       <LocationMarker onLocationSelect={onLocationSelect} />
     </MapContainer>
   );
-}
+});
+WeatherMap.displayName = 'WeatherMap';
