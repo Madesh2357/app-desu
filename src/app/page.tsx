@@ -46,7 +46,7 @@ export default function Home() {
             <WeatherMap onLocationSelect={handleLocationSelect} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <Alerts />
+            <Alerts analysis={analysis} loading={loading} />
             <WeatherAnalysis analysis={analysis} loading={loading} />
           </div>
         </div>

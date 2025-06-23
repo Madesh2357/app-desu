@@ -1,10 +1,47 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Bell, TriangleAlert, Settings } from "lucide-react";
+import { Bell, TriangleAlert, Settings, CheckCircle } from "lucide-react";
+import type { GetWeatherAnalysisOutput } from "@/ai/flows/get-weather-analysis";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export function Alerts() {
+type AlertsProps = {
+  analysis: GetWeatherAnalysisOutput | null;
+  loading: boolean;
+};
+
+export function Alerts({ analysis, loading }: AlertsProps) {
+  const showAlert = analysis && analysis.cycloneProbability > 50;
+  
+  const getAlertVariant = () => {
+    if (!analysis || analysis.cycloneProbability <= 50) return 'default';
+    if (analysis.cycloneProbability > 75) return 'destructive';
+    return 'accent';
+  }
+
+  const variant = getAlertVariant();
+
+  const alertStyles = {
+    destructive: {
+      container: "border-destructive/50 bg-destructive/10",
+      icon: "text-destructive",
+      title: "text-destructive"
+    },
+    accent: {
+      container: "border-accent/50 bg-accent/10",
+      icon: "text-accent",
+      title: "text-accent"
+    },
+    default: {
+      container: "border-transparent bg-secondary/30",
+      icon: "text-primary",
+      title: "text-foreground"
+    }
+  };
+  
+  const currentStyle = alertStyles[variant];
+
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -14,17 +51,39 @@ export function Alerts() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-start space-x-4 rounded-md border border-accent/50 bg-accent/10 p-4">
-          <TriangleAlert className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
-          <div className="flex-1 space-y-1">
-            <p className="text-sm font-semibold text-accent">
-              High Cyclone Probability
-            </p>
-            <p className="text-sm text-muted-foreground">
-              A cyclone with 90% probability is forecast for your region in the next 48 hours. Evacuate immediately.
-            </p>
+        {loading ? (
+          <div className="flex items-start space-x-4 rounded-md border p-4">
+             <Skeleton className="h-5 w-5 rounded-full" />
+             <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full mt-2" />
+             </div>
           </div>
-        </div>
+        ) : showAlert && analysis ? (
+          <div className={`flex items-start space-x-4 rounded-md border p-4 ${currentStyle.container}`}>
+            <TriangleAlert className={`h-5 w-5 flex-shrink-0 mt-0.5 ${currentStyle.icon}`} />
+            <div className="flex-1 space-y-1">
+              <p className={`text-sm font-semibold ${currentStyle.title}`}>
+                {analysis.cycloneProbability > 75 ? 'High Cyclone Probability' : 'Elevated Cyclone Risk'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {analysis.recommendations}
+              </p>
+            </div>
+          </div>
+        ) : (
+           <div className={`flex items-start space-x-4 rounded-md border p-4 ${alertStyles.default.container}`}>
+             <CheckCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${alertStyles.default.icon}`} />
+             <div className="flex-1 space-y-1">
+               <p className={`text-sm font-semibold ${alertStyles.default.title}`}>
+                 No Active Alerts
+               </p>
+               <p className="text-sm text-muted-foreground">
+                 Current conditions appear safe. Click the map to check other areas.
+               </p>
+             </div>
+           </div>
+        )}
         
         <Separator />
         
