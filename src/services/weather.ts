@@ -47,6 +47,9 @@ export async function getWeatherData(lat: number, lon: number): Promise<WeatherD
   const response = await fetch(url);
   if (!response.ok) {
     const errorData = await response.json();
+    if (response.status === 401) {
+      throw new Error('The provided OpenWeather API key is invalid or inactive. Please verify your key on the OpenWeatherMap website and ensure it is correctly set in the .env file.');
+    }
     throw new Error(`Failed to fetch weather data: ${errorData.message || response.statusText}`);
   }
   return response.json();
