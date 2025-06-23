@@ -9,7 +9,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { getWeatherData } from '@/services/weather';
 
 const GetWeatherAnalysisInputSchema = z.object({
   lat: z.number().describe('The latitude of the location.'),
@@ -32,23 +31,22 @@ export async function getWeatherAnalysis(
 
 const prompt = ai.definePrompt({
   name: 'weatherAnalysisPrompt',
-  input: {schema: z.object({ weatherData: z.string() })},
+  input: {schema: GetWeatherAnalysisInputSchema},
   output: {schema: GetWeatherAnalysisOutputSchema},
   prompt: `You are an expert meteorologist specializing in tropical cyclones and maritime weather.
-  Analyze the following weather data, which is from a shore or oceanic region.
-  Your analysis should focus on identifying the potential for cyclone development.
+  Your task is to provide a detailed weather analysis for the given geographical coordinates, which are likely in a shore or oceanic region.
 
-  Weather Data:
-  \`\`\`json
-  {{{weatherData}}}
-  \`\`\`
+  Location:
+  Latitude: {{{lat}}}
+  Longitude: {{{lon}}}
 
-  Based on the data, provide:
-  1.  A detailed weather analysis.
-  2.  The probability of a cyclone (0-100%). High wind speeds (e.g., > 60 km/h), low atmospheric pressure (e.g., < 1000 hPa), and high humidity are key indicators.
-  3.  Specific, actionable recommendations for people in the area, especially those near the coast or at sea.
+  Using your access to real-time weather data, please:
+  1.  Find the current weather conditions for this location.
+  2.  Provide a concise weather analysis, focusing on identifying the potential for cyclone development. Mention key factors like wind speed, atmospheric pressure, and humidity.
+  3.  Estimate the probability of a cyclone (from 0 to 100%). Use indicators like high wind speeds (> 60 km/h), low atmospheric pressure (< 1000 hPa), and high humidity to inform your probability.
+  4.  Give specific, actionable recommendations for people in the area, especially those near the coast or at sea (e.g., 'Safe to go fishing', 'Advised to return to shore', 'Immediate evacuation recommended').
   
-  Be cautious and prioritize safety in your recommendations. It is better to be safe than sorry.
+  Prioritize safety in your recommendations. It is better to be safe than sorry.
   `,
 });
 
@@ -58,9 +56,8 @@ const weatherAnalysisFlow = ai.defineFlow(
     inputSchema: GetWeatherAnalysisInputSchema,
     outputSchema: GetWeatherAnalysisOutputSchema,
   },
-  async ({ lat, lon }) => {
-    const weatherData = await getWeatherData(lat, lon);
-    const {output} = await prompt({ weatherData: JSON.stringify(weatherData, null, 2) });
+  async (input) => {
+    const {output} = await prompt(input);
     return output!;
   }
 );
