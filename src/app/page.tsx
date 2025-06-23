@@ -25,12 +25,22 @@ export default function Home() {
     try {
       const result = await fetchWeatherAnalysis({ lat, lon });
       setAnalysis(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      let description = "An unknown error occurred. Please try again later.";
+
+      if (error.status === 'FAILED_PRECONDITION') {
+        description = "The Google AI API key is missing or invalid. Please add GOOGLE_API_KEY=your_key_here to the .env file and restart the server."
+      } else if (error.message?.includes('401')) {
+        description = "The provided OpenWeather API key is invalid. Please verify the key and restart the server.";
+      } else if (error instanceof Error) {
+        description = error.message;
+      }
+      
       toast({
         variant: "destructive",
-        title: "Error fetching weather analysis",
-        description: error instanceof Error ? error.message : "An unknown error occurred. Please ensure your OpenWeather API key is correctly configured in the .env file.",
+        title: "Error Fetching Weather Analysis",
+        description: description,
       });
     } finally {
       setLoading(false);
