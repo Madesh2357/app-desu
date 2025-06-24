@@ -12,10 +12,10 @@ type AlertsProps = {
 };
 
 export function Alerts({ analysis, loading }: AlertsProps) {
-  const showAlert = analysis && analysis.cycloneProbability > 50;
+  const showAlert = analysis?.isCoastal && analysis.cycloneProbability && analysis.cycloneProbability > 50;
   
   const getAlertVariant = () => {
-    if (!analysis || analysis.cycloneProbability <= 50) return 'default';
+    if (!analysis || !showAlert || !analysis.cycloneProbability) return 'default';
     if (analysis.cycloneProbability > 75) return 'destructive';
     return 'accent';
   }
@@ -64,7 +64,7 @@ export function Alerts({ analysis, loading }: AlertsProps) {
             <TriangleAlert className={`h-5 w-5 flex-shrink-0 mt-0.5 ${currentStyle.icon}`} />
             <div className="flex-1 space-y-1">
               <p className={`text-sm font-semibold ${currentStyle.title}`}>
-                {analysis.cycloneProbability > 75 ? 'High Cyclone Probability' : 'Elevated Cyclone Risk'}
+                {analysis.cycloneProbability && analysis.cycloneProbability > 75 ? 'High Cyclone Probability' : 'Elevated Cyclone Risk'}
               </p>
               <p className="text-sm text-muted-foreground">
                 {analysis.recommendations}
@@ -79,7 +79,7 @@ export function Alerts({ analysis, loading }: AlertsProps) {
                  No Active Alerts
                </p>
                <p className="text-sm text-muted-foreground">
-                 Current conditions appear safe. Click the map to check other areas.
+                 {analysis ? analysis.recommendations : "Current conditions appear safe. Click the map to check other areas."}
                </p>
              </div>
            </div>

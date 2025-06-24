@@ -17,13 +17,14 @@ const WeatherMap = dynamic(() => import('@/components/weather-map').then(mod => 
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<GetWeatherAnalysisOutput | null>(null);
+  const [language, setLanguage] = useState('en');
   const { toast } = useToast();
 
   const handleLocationSelect = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
     setAnalysis(null);
     try {
-      const result = await fetchWeatherAnalysis({ lat, lon });
+      const result = await fetchWeatherAnalysis({ lat, lon, language });
       setAnalysis(result);
     } catch (error: any) {
       console.error(error);
@@ -43,11 +44,11 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, language]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background font-body">
-      <Header />
+      <Header language={language} setLanguage={setLanguage} />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 min-h-[60vh] lg:min-h-0">

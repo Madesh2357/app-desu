@@ -3,6 +3,7 @@ import { Separator } from "@/components/ui/separator";
 import type { GetWeatherAnalysisOutput } from "@/ai/flows/get-weather-analysis";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Thermometer, Wind, Droplets, ShieldAlert, CalendarClock, BadgeInfo } from "lucide-react";
+import DynamicIcon from "./dynamic-icon";
 
 type WeatherAnalysisProps = {
   analysis: GetWeatherAnalysisOutput | null;
@@ -27,7 +28,14 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
             <Skeleton className="h-10 w-1/2" />
             <Separator />
             <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-20 w-full" />
+            <div className="grid grid-cols-3 gap-2">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+            </div>
         </CardContent>
       </Card>
     );
@@ -50,9 +58,9 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
   }
 
   const probabilityColor =
-    analysis.cycloneProbability > 75
+    analysis.cycloneProbability && analysis.cycloneProbability > 75
       ? "text-destructive"
-      : analysis.cycloneProbability > 50
+      : analysis.cycloneProbability && analysis.cycloneProbability > 50
       ? "text-accent"
       : "text-primary";
 
@@ -85,16 +93,33 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
                 </div>
             </div>
         </div>
+        
+        {analysis.isCoastal && typeof analysis.cycloneProbability === 'number' && (
+          <>
+            <Separator />
+            <div>
+                <h3 className="font-semibold text-sm mb-2 flex items-center"><ShieldAlert className="mr-2 h-4 w-4"/> Cyclone Probability</h3>
+                <p className={`text-2xl font-bold ${probabilityColor}`}>{analysis.cycloneProbability}%</p>
+            </div>
+          </>
+        )}
+        
         <Separator />
-        <div>
-            <h3 className="font-semibold text-sm mb-2 flex items-center"><ShieldAlert className="mr-2 h-4 w-4"/> Cyclone Probability</h3>
-            <p className={`text-2xl font-bold ${probabilityColor}`}>{analysis.cycloneProbability}%</p>
-        </div>
-        <Separator />
+        
         <div>
           <h3 className="font-semibold text-sm mb-2 flex items-center"><CalendarClock className="mr-2 h-4 w-4"/> 72-Hour Forecast</h3>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.forecast}</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {analysis.forecast.map((item, index) => (
+              <div key={index} className="flex flex-col items-center justify-center p-2 rounded-md bg-muted/50">
+                <p className="text-xs font-semibold">{item.time}</p>
+                <DynamicIcon name={item.icon} className="h-8 w-8 my-1 text-accent" />
+                <p className="text-xs font-bold">{item.temperature}</p>
+                <p className="text-xs text-muted-foreground mt-1">{item.summary}</p>
+              </div>
+            ))}
+          </div>
         </div>
+
       </CardContent>
     </Card>
   );
