@@ -9,7 +9,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { calculateCycloneRisk } from '@/services/fuzzy-logic';
 
 const GetWeatherAnalysisInputSchema = z.object({
   lat: z.number().describe('The latitude of the location.'),
@@ -24,7 +23,7 @@ const GetWeatherAnalysisOutputSchema = z.object({
     windSpeed: z.string().describe("The current wind speed, including units (e.g., '15 km/h')."),
     windDirection: z.string().describe("The current wind direction (e.g., 'from the SW')."),
     humidity: z.number().describe("The current humidity as a percentage."),
-    cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present now. Omit this field if isCoastal is false.").optional(),
+    cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present now, from 0-100. This field is ONLY required if 'isCoastal' is true, otherwise it must be omitted.").optional(),
     forecast: z.array(z.object({
         time: z.string().describe("The time period for this forecast (e.g., 'Next 12 Hours', '12-24 Hours')."),
         summary: z.string().describe("A brief, simple summary of the weather (e.g., 'Clear skies', 'Chance of rain')."),
@@ -32,7 +31,7 @@ const GetWeatherAnalysisOutputSchema = z.object({
         temperature: z.string().describe("The expected temperature range, e.g., '25-28°C'."),
         windSpeed: z.string().describe("The expected average wind speed for the period, e.g., '10-15 km/h'.").optional(),
         humidity: z.number().describe("The expected average humidity percentage for the period.").optional(),
-        cycloneRiskLevel: z.enum(['none', 'low', 'medium', 'high']).describe("The predicted cyclone risk for this specific time period. This field is ONLY required if 'isCoastal' is true, otherwise it can be omitted.").optional(),
+        cycloneRiskLevel: z.enum(['none', 'low', 'medium', 'high']).describe("The predicted cyclone risk for this specific time period. This field is ONLY required if 'isCoastal' is true, otherwise it must be omitted.").optional(),
     })).describe("A 72-hour forecast broken down into intervals."),
     recommendations: z.string().describe("Actionable recommendations for individuals in the area. If coastal, focus on maritime safety. Provide all text in the requested language."),
 });
@@ -47,17 +46,8 @@ export async function getWeatherAnalysis(
 const prompt = ai.definePrompt({
   name: 'weatherAnalysisPrompt',
   input: {schema: GetWeatherAnalysisInputSchema},
-  output: {schema: GetWeatherAnalysisOutputSchema.omit({ cycloneProbability: true, forecast: true }).extend({
-    forecast: z.array(z.object({
-        time: z.string(),
-        summary: z.string(),
-        icon: z.string(),
-        temperature: z.string(),
-        windSpeed: z.string(),
-        humidity: z.number(),
-    })),
-  })},
-  prompt: `You are an expert meteorologist providing raw weather data.
+  output: {schema: GetWeatherAnalysisOutputSchema},
+  prompt: `You are an expert meteorologist with access to advanced climate models and historical weather data. Your task is to provide a comprehensive weather and cyclone risk analysis.
   Your entire response for any text field must be in the language specified by the language code: {{{language}}}.
 
   Location:
@@ -65,27 +55,24 @@ const prompt = ai.definePrompt({
   Longitude: {{{lon}}}
 
   Tasks:
-  1.  **Coastal Status**: Determine if the provided coordinates are for an oceanic location or a seashore, or within 10km of one. Set 'isCoastal' to true ONLY for these locations. For ALL other land locations, set 'isCoastal' to false.
+  1.  **Coastal Status**: Determine if the provided coordinates are for an oceanic location or a seashore. Set 'isCoastal' to true ONLY for these locations. For ALL other land locations, set 'isCoastal' to false.
   2.  **Current Conditions**: Provide the current temperature (Celsius), wind speed (km/h), wind direction, and humidity.
-  3.  **Visual Forecast**: Provide a 72-hour forecast broken into six 12-hour intervals. For each interval, provide:
+  3.  **Cyclone Analysis (Coastal Only)**: If 'isCoastal' is true, perform a cyclone risk analysis.
+      - Based on current conditions (sea surface temperature, wind shear, humidity), calculate and provide the 'cycloneProbability' as a percentage from 0 to 100.
+      - For the 72-hour forecast, determine the 'cycloneRiskLevel' ('none', 'low', 'medium', 'high') for each 12-hour interval based on evolving conditions.
+      - If 'isCoastal' is false, you MUST omit the 'cycloneProbability' and 'cycloneRiskLevel' fields.
+  4.  **Visual Forecast**: Provide a 72-hour forecast broken into six 12-hour intervals. For each interval, provide:
       - A simple summary.
       - Temperature range (e.g., '25-28°C').
       - An icon from: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
       - The average wind speed for the period (km/h).
       - The average humidity for the period (%).
-  4.  **Simple Recommendations**: Provide actionable recommendations based on the general weather conditions. If 'isCoastal' is true, provide recommendations for fishermen. Keep the language simple. Do NOT mention cyclone risk, as that will be calculated separately.
+  5.  **Simple Recommendations**: Provide actionable recommendations based on the full analysis.
+      - If 'isCoastal' is true, provide specific, simple advice for fishermen and coastal communities based on the cyclone risk.
+      - If 'isCoastal' is false, provide general weather advice.
+      - Keep the language extremely simple and easy to understand for all audiences.
   `,
 });
-
-// Helper to parse numbers from strings like "50 km/h" or "25-30°C"
-const parseAverageValue = (value: string | number | undefined): number => {
-  if (typeof value === 'number') return value;
-  if (typeof value !== 'string') return 0;
-  const numbers = value.match(/\d+(\.\d+)?/g)?.map(Number);
-  if (!numbers || numbers.length === 0) return 0;
-  if (numbers.length === 1) return numbers[0];
-  return numbers.reduce((a, b) => a + b, 0) / numbers.length;
-};
 
 
 const weatherAnalysisFlow = ai.defineFlow(
@@ -95,41 +82,10 @@ const weatherAnalysisFlow = ai.defineFlow(
     outputSchema: GetWeatherAnalysisOutputSchema,
   },
   async (input) => {
-    const {output: geminiOutput} = await prompt(input);
-
-    if (!geminiOutput) {
+    const {output} = await prompt(input);
+    if (!output) {
         throw new Error("Failed to get weather data from AI model.");
     }
-    
-    let cycloneProbability: number | undefined = undefined;
-
-    if (geminiOutput.isCoastal) {
-        cycloneProbability = calculateCycloneRisk({
-            temp: parseAverageValue(geminiOutput.temperature),
-            humidity: parseAverageValue(geminiOutput.humidity),
-            wind: parseAverageValue(geminiOutput.windSpeed),
-        });
-    }
-
-    const processedForecast = geminiOutput.forecast.map(item => {
-        let cycloneRiskLevel: 'none' | 'low' | 'medium' | 'high' = 'none';
-        if (geminiOutput.isCoastal && item.windSpeed && item.humidity && item.temperature) {
-            const riskValue = calculateCycloneRisk({
-                temp: parseAverageValue(item.temperature),
-                humidity: item.humidity,
-                wind: parseAverageValue(item.windSpeed),
-            });
-            if (riskValue > 75) cycloneRiskLevel = 'high';
-            else if (riskValue > 40) cycloneRiskLevel = 'medium';
-            else if (riskValue > 10) cycloneRiskLevel = 'low';
-        }
-        return { ...item, cycloneRiskLevel };
-    });
-
-    return {
-        ...geminiOutput,
-        cycloneProbability,
-        forecast: processedForecast,
-    };
+    return output;
   }
 );
