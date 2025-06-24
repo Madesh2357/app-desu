@@ -19,53 +19,79 @@ interface WeatherMapProps {
 
 export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
 
+  // Use a ref to hold the latest onLocationSelect function without re-triggering the effect
+  const onLocationSelectRef = useRef(onLocationSelect);
   useEffect(() => {
-    // Function to handle setting a new location, which always uses the current map instance
-    const setLocation = (latlng: L.LatLng, popupText: string) => {
-      const map = mapInstanceRef.current;
-      if (!map) return; // Guard against calls after map is destroyed
+    onLocationSelectRef.current = onLocationSelect;
+  }, [onLocationSelect]);
 
-      onLocationSelect(latlng.lat, latlng.lng);
 
-      if (markerRef.current) {
-        markerRef.current.setLatLng(latlng);
-      } else {
-        markerRef.current = L.marker(latlng).addTo(map);
-      }
-      markerRef.current.bindPopup(popupText).openPopup();
-      map.flyTo(latlng, map.getZoom());
-    };
-    
-    // Initialize map only if the container ref is set and a map instance doesn't exist
-    if (mapContainerRef.current && !mapInstanceRef.current) {
+  useEffect(() => {
+    // This effect runs only once to initialize the map.
+    if (mapContainerRef.current && !mapRef.current) {
       const map = L.map(mapContainerRef.current, {
-        center: [20.5937, 78.9629],
+        center: [20.5937, 78.9629], // A neutral default center
         zoom: 5,
         scrollWheelZoom: true,
       });
-      mapInstanceRef.current = map;
+      mapRef.current = map;
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
+      const setLocation = (lat: number, lon: number, popupText: string, zoomLevel = 10) => {
+          const currentMap = mapRef.current;
+          if (!currentMap) return;
+
+          const latlng = L.latLng(lat, lon);
+
+          if (markerRef.current) {
+            markerRef.current.setLatLng(latlng);
+          } else {
+            markerRef.current = L.marker(latlng).addTo(currentMap);
+          }
+          markerRef.current.bindPopup(popupText).openPopup();
+          currentMap.flyTo(latlng, zoomLevel);
+          onLocationSelectRef.current(lat, lon);
+      };
+
       // Handle map clicks
       map.on('click', (e: L.LeafletMouseEvent) => {
-        setLocation(e.latlng, "Selected Location");
+        setLocation(e.latlng.lat, e.latlng.lng, "Selected Location", map.getZoom());
       });
+
+      // Fetch initial location from ipinfo.io
+      fetch('https://ipinfo.io/json')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Failed to fetch IP info');
+            }
+            return res.json();
+        })
+        .then(data => {
+          if (data.loc) {
+            const [lat, lon] = data.loc.split(',').map(Number);
+            setLocation(lat, lon, "Your Estimated Location");
+          }
+        })
+        .catch(error => {
+          console.error("Could not fetch initial location from ipinfo.io:", error);
+          // Silently fail and let user click map.
+        });
     }
 
-    // Cleanup function: remove map instance on component unmount
+    // Cleanup function
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
       }
     };
-  }, [onLocationSelect]);
+  }, []); // Empty dependency array ensures this effect runs only once.
 
   return (
     <div
