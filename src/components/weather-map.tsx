@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -17,96 +18,67 @@ interface WeatherMapProps {
   onLocationSelect: (lat: number, lon: number) => void;
 }
 
-export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+const INITIAL_CENTER: L.LatLngTuple = [20.5937, 78.9629];
+const INITIAL_ZOOM = 5;
 
-  // Use a ref to hold the latest onLocationSelect function without re-triggering the effect
-  const onLocationSelectRef = useRef(onLocationSelect);
+// A custom component to handle map events and logic
+function MapController({ onLocationSelect }: WeatherMapProps) {
+  const [position, setPosition] = useState<L.LatLng | null>(null);
+  const [popupText, setPopupText] = useState("Your estimated location. Click the map to get a forecast.");
+  const map = useMap();
+
+  // On initial load, get user location from IP and center the map
   useEffect(() => {
-    onLocationSelectRef.current = onLocationSelect;
-  }, [onLocationSelect]);
-
-
-  useEffect(() => {
-    // This effect runs only once to initialize the map.
-    if (mapContainerRef.current && !mapRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        center: [20.5937, 78.9629], // A neutral default center
-        zoom: 5,
-        scrollWheelZoom: true,
-      });
-      mapRef.current = map;
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(map);
-
-      // Function to update marker and trigger analysis
-      const selectLocation = (lat: number, lon: number, popupText: string) => {
-          const currentMap = mapRef.current;
-          if (!currentMap) return;
-
+    fetch('https://ipinfo.io/json')
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch IP info');
+        return res.json();
+      })
+      .then(data => {
+        if (data.loc) {
+          const [lat, lon] = data.loc.split(',').map(Number);
           const latlng = L.latLng(lat, lon);
-          if (markerRef.current) {
-            markerRef.current.setLatLng(latlng);
-          } else {
-            markerRef.current = L.marker(latlng).addTo(currentMap);
-          }
-          markerRef.current.bindPopup(popupText).openPopup();
-          currentMap.setView(latlng, currentMap.getZoom());
-          onLocationSelectRef.current(lat, lon);
-      };
-
-      // Handle map clicks to trigger analysis
-      map.on('click', (e: L.LeafletMouseEvent) => {
-        selectLocation(e.latlng.lat, e.latlng.lng, "Selected Location");
+          map.flyTo(latlng, 10);
+          setPosition(latlng);
+        }
+      })
+      .catch(error => {
+        console.error("Could not fetch initial location:", error);
+        // Silently fail if IP lookup fails, user can still click the map.
       });
+  }, [map]);
 
-      // Fetch initial location from ipinfo.io, but DO NOT trigger analysis
-      fetch('https://ipinfo.io/json')
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Failed to fetch IP info');
-            }
-            return res.json();
-        })
-        .then(data => {
-          const currentMap = mapRef.current;
-          if (currentMap && data.loc) {
-            const [lat, lon] = data.loc.split(',').map(Number);
-            const latlng = L.latLng(lat, lon);
-            
-            // Just center the map and place a marker, no analysis
-            currentMap.flyTo(latlng, 10);
-            if (markerRef.current) {
-                markerRef.current.setLatLng(latlng);
-            } else {
-                markerRef.current = L.marker(latlng).addTo(currentMap);
-            }
-            markerRef.current.bindPopup("Your estimated location. Click the map to get a forecast.").openPopup();
-          }
-        })
-        .catch(error => {
-          console.error("Could not fetch initial location from ipinfo.io:", error);
-          // Silently fail and let user click map.
-        });
-    }
+  // Handle map click events
+  useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng;
+      setPosition(e.latlng);
+      setPopupText("Selected Location");
+      onLocationSelect(lat, lng);
+    },
+  });
 
-    // Cleanup function
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []); // Empty dependency array ensures this effect runs only once.
+  // Render the marker and popup
+  return position === null ? null : (
+    <Marker position={position}>
+      <Popup autoOpen={true}>{popupText}</Popup>
+    </Marker>
+  );
+}
 
+export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
   return (
-    <div
-      ref={mapContainerRef}
+    <MapContainer
+      center={INITIAL_CENTER}
+      zoom={INITIAL_ZOOM}
+      scrollWheelZoom={true}
       className="w-full h-full min-h-[400px] rounded-lg"
-    />
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <MapController onLocationSelect={onLocationSelect} />
+    </MapContainer>
   );
 }
