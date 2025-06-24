@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, memo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default icon paths in Next.js
+// Fix for default icon paths in Next.js which can cause issues
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -18,33 +18,30 @@ interface WeatherMapProps {
   onLocationSelect: (lat: number, lon: number) => void;
 }
 
-const INITIAL_CENTER: L.LatLngTuple = [20.5937, 78.9629];
+const INITIAL_CENTER: L.LatLngTuple = [20.5937, 78.9629]; // Center of India
 const INITIAL_ZOOM = 5;
 
-// A custom component to handle map events and logic
+// This component handles map events and the marker's position
 function MapController({ onLocationSelect }: WeatherMapProps) {
   const [position, setPosition] = useState<L.LatLng | null>(null);
   const [popupText, setPopupText] = useState("Click the map to get a forecast.");
   const map = useMap();
 
-  // On initial load, get user location from IP and center the map
+  // On initial load, try to get user location via their IP
   useEffect(() => {
     fetch('https://ipinfo.io/json')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch IP info');
-        return res.json();
-      })
+      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch IP info'))
       .then(data => {
         if (data.loc) {
           const [lat, lon] = data.loc.split(',').map(Number);
           const latlng = L.latLng(lat, lon);
           map.flyTo(latlng, 10);
           setPosition(latlng);
-          setPopupText("Your estimated location. Click the map to get a forecast.")
+          setPopupText("Your estimated location. Click to analyze.");
         }
       })
       .catch(error => {
-        console.error("Could not fetch initial location:", error);
+        console.warn("Could not fetch initial location:", error);
         // Silently fail if IP lookup fails, user can still click the map.
       });
   }, [map]);
@@ -59,7 +56,7 @@ function MapController({ onLocationSelect }: WeatherMapProps) {
     },
   });
 
-  // Render the marker and popup
+  // Render the marker and popup if a position is set
   return position === null ? null : (
     <Marker position={position}>
       <Popup autoOpen={true}>{popupText}</Popup>
@@ -67,7 +64,8 @@ function MapController({ onLocationSelect }: WeatherMapProps) {
   );
 }
 
-function WeatherMap({ onLocationSelect }: WeatherMapProps) {
+// The main WeatherMap component
+export default function WeatherMap({ onLocationSelect }: WeatherMapProps) {
   return (
     <MapContainer
       center={INITIAL_CENTER}
@@ -83,8 +81,3 @@ function WeatherMap({ onLocationSelect }: WeatherMapProps) {
     </MapContainer>
   );
 }
-
-const MemoizedWeatherMap = memo(WeatherMap);
-MemoizedWeatherMap.displayName = 'WeatherMap';
-
-export default MemoizedWeatherMap;

@@ -9,9 +9,8 @@ import { fetchWeatherAnalysis } from '@/app/actions';
 import type { GetWeatherAnalysisOutput } from '@/ai/flows/get-weather-analysis';
 import { useToast } from "@/hooks/use-toast";
 import { sampleAnalysis } from '@/lib/sample-analysis';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HistoricalWeather } from '@/components/historical-weather';
 
+// Dynamically import the WeatherMap component to prevent SSR issues with Leaflet
 const WeatherMap = dynamic(() => import('@/components/weather-map'), {
     ssr: false,
     loading: () => <div className="aspect-video w-full rounded-md bg-muted animate-pulse" />
@@ -23,44 +22,43 @@ export default function Home() {
   const [language, setLanguage] = useState('en');
   const { toast } = useToast();
 
+  // Use a ref to store the current language to avoid re-creating the callback
   const languageRef = useRef(language);
   languageRef.current = language;
 
   // Load last analysis from localStorage on initial render
   useEffect(() => {
     try {
-      const savedAnalysis = localStorage.getItem('lastSafeCatchAnalysis');
+      const savedAnalysis = localStorage.getItem('lastFishermanAnalysis');
       if (savedAnalysis) {
         setAnalysis(JSON.parse(savedAnalysis));
       }
     } catch (error) {
       console.error("Failed to load analysis from localStorage", error);
-      // If parsing fails, remove the invalid item
-      localStorage.removeItem('lastSafeCatchAnalysis');
+      localStorage.removeItem('lastFishermanAnalysis');
     }
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
+  // Define the location select handler with useCallback to stabilize its identity
   const handleLocationSelect = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
     setAnalysis(null);
     try {
-      // Use the ref here to avoid dependency on the language state
       const result = await fetchWeatherAnalysis({ lat, lon, language: languageRef.current });
       setAnalysis(result);
       // Save successful analysis to localStorage
-      localStorage.setItem('lastSafeCatchAnalysis', JSON.stringify(result));
-    } catch (error: any)
-      {
+      localStorage.setItem('lastFishermanAnalysis', JSON.stringify(result));
+    } catch (error: any) {
       console.error(error);
       let title = "Error Fetching Weather Analysis";
       let description = "An unknown error occurred. Please try again later.";
 
-      // More robust check for quota error
+      // Check for quota error and provide a fallback
       if (error.message?.includes("429") || error.message?.includes("Quota")) {
           title = "API Quota Exceeded";
-          description = "Displaying sample data. Please try again tomorrow.";
+          description = "Displaying sample data as a fallback. Please check your API key or plan.";
           setAnalysis(sampleAnalysis);
-          localStorage.setItem('lastSafeCatchAnalysis', JSON.stringify(sampleAnalysis));
+          localStorage.setItem('lastFishermanAnalysis', JSON.stringify(sampleAnalysis));
       } else if (error.message?.includes('API key')) {
         description = "The Google AI API key is missing or invalid. Please add GOOGLE_API_KEY=your_key_here to the .env file and restart the server."
       } else if (error instanceof Error) {
@@ -75,7 +73,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [toast]); // The callback now only depends on `toast`, making it stable
+  }, [toast]); // Now only depends on toast, which is stable
 
   return (
     <div className="flex flex-col min-h-screen bg-background font-body">
@@ -87,18 +85,7 @@ export default function Home() {
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
             <Alerts analysis={analysis} loading={loading} />
-            <Tabs defaultValue="analysis" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="analysis">Current Analysis</TabsTrigger>
-                <TabsTrigger value="historical">Historical Data</TabsTrigger>
-              </TabsList>
-              <TabsContent value="analysis">
-                <WeatherAnalysis analysis={analysis} loading={loading} />
-              </TabsContent>
-              <TabsContent value="historical">
-                <HistoricalWeather />
-              </TabsContent>
-            </Tabs>
+            <WeatherAnalysis analysis={analysis} loading={loading} />
           </div>
         </div>
       </main>
