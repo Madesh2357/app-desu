@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -24,7 +24,7 @@ const INITIAL_ZOOM = 5;
 // A custom component to handle map events and logic
 function MapController({ onLocationSelect }: WeatherMapProps) {
   const [position, setPosition] = useState<L.LatLng | null>(null);
-  const [popupText, setPopupText] = useState("Your estimated location. Click the map to get a forecast.");
+  const [popupText, setPopupText] = useState("Click the map to get a forecast.");
   const map = useMap();
 
   // On initial load, get user location from IP and center the map
@@ -40,6 +40,7 @@ function MapController({ onLocationSelect }: WeatherMapProps) {
           const latlng = L.latLng(lat, lon);
           map.flyTo(latlng, 10);
           setPosition(latlng);
+          setPopupText("Your estimated location. Click the map to get a forecast.")
         }
       })
       .catch(error => {
@@ -66,7 +67,7 @@ function MapController({ onLocationSelect }: WeatherMapProps) {
   );
 }
 
-export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
+function WeatherMapInternal({ onLocationSelect }: WeatherMapProps) {
   return (
     <MapContainer
       center={INITIAL_CENTER}
@@ -82,3 +83,5 @@ export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
     </MapContainer>
   );
 }
+
+export const WeatherMap = memo(WeatherMapInternal);
