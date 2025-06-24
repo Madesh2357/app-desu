@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -64,8 +64,8 @@ function MapController({ onLocationSelect }: WeatherMapProps) {
   );
 }
 
-// The main WeatherMap component
-export default function WeatherMap({ onLocationSelect }: WeatherMapProps) {
+// Un-memoized component
+function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
   return (
     <MapContainer
       center={INITIAL_CENTER}
@@ -81,3 +81,8 @@ export default function WeatherMap({ onLocationSelect }: WeatherMapProps) {
     </MapContainer>
   );
 }
+
+// Memoize the component to prevent re-renders when parent state (like language) changes
+const WeatherMap = memo(BaseWeatherMap);
+
+export default WeatherMap;
