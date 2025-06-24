@@ -67,7 +67,7 @@ export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.stopLocate(); // Important to prevent async events on a removed map
-        mapInstanceeRef.current.remove();
+        mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
