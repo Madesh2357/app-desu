@@ -22,7 +22,7 @@ export default function Header({ language, setLanguage }: HeaderProps) {
         <div className="flex items-center gap-3">
           <span className="text-2xl" role="img" aria-label="wave">🌊</span>
           <h1 className="text-lg font-bold font-headline text-foreground sm:text-xl">
-            ALL-IN-1 FISHERMAN app
+            ALL-IN-1 FISHERMAN
           </h1>
         </div>
         <div className="flex items-center gap-4">

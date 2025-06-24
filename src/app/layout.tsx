@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'ALL-IN-1 FISHERMAN app',
+  title: 'ALL-IN-1 FISHERMAN',
   description: 'Your complete companion for safer and smarter fishing.',
 };
 
