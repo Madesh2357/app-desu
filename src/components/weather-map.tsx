@@ -56,17 +56,11 @@ export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
       map.on('click', (e: L.LeafletMouseEvent) => {
         setLocation(e.latlng, "Selected Location");
       });
-
-      // Attempt to geolocate the user on initial load with high accuracy
-      map.locate({ enableHighAccuracy: true }).on('locationfound', (e: L.LocationEvent) => {
-        setLocation(e.latlng, "Your Location");
-      });
     }
 
     // Cleanup function: remove map instance on component unmount
     return () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.stopLocate(); // Important to prevent async events on a removed map
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
