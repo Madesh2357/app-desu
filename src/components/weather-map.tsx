@@ -43,28 +43,28 @@ export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
-      const setLocation = (lat: number, lon: number, popupText: string, zoomLevel = 10) => {
+      // Function to update marker and trigger analysis
+      const selectLocation = (lat: number, lon: number, popupText: string) => {
           const currentMap = mapRef.current;
           if (!currentMap) return;
 
           const latlng = L.latLng(lat, lon);
-
           if (markerRef.current) {
             markerRef.current.setLatLng(latlng);
           } else {
             markerRef.current = L.marker(latlng).addTo(currentMap);
           }
           markerRef.current.bindPopup(popupText).openPopup();
-          currentMap.flyTo(latlng, zoomLevel);
+          currentMap.setView(latlng, currentMap.getZoom());
           onLocationSelectRef.current(lat, lon);
       };
 
-      // Handle map clicks
+      // Handle map clicks to trigger analysis
       map.on('click', (e: L.LeafletMouseEvent) => {
-        setLocation(e.latlng.lat, e.latlng.lng, "Selected Location", map.getZoom());
+        selectLocation(e.latlng.lat, e.latlng.lng, "Selected Location");
       });
 
-      // Fetch initial location from ipinfo.io
+      // Fetch initial location from ipinfo.io, but DO NOT trigger analysis
       fetch('https://ipinfo.io/json')
         .then(res => {
             if (!res.ok) {
@@ -73,9 +73,19 @@ export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
             return res.json();
         })
         .then(data => {
-          if (data.loc) {
+          const currentMap = mapRef.current;
+          if (currentMap && data.loc) {
             const [lat, lon] = data.loc.split(',').map(Number);
-            setLocation(lat, lon, "Your Estimated Location");
+            const latlng = L.latLng(lat, lon);
+            
+            // Just center the map and place a marker, no analysis
+            currentMap.flyTo(latlng, 10);
+            if (markerRef.current) {
+                markerRef.current.setLatLng(latlng);
+            } else {
+                markerRef.current = L.marker(latlng).addTo(currentMap);
+            }
+            markerRef.current.bindPopup("Your estimated location. Click the map to get a forecast.").openPopup();
           }
         })
         .catch(error => {
