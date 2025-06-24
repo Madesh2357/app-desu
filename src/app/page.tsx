@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/header';
 import { Alerts } from '@/components/alerts';
@@ -12,7 +12,7 @@ import { sampleAnalysis } from '@/lib/sample-analysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HistoricalWeather } from '@/components/historical-weather';
 
-const WeatherMap = dynamic(() => import('@/components/weather-map').then(mod => mod.WeatherMap), {
+const WeatherMap = dynamic(() => import('@/components/weather-map'), {
     ssr: false,
     loading: () => <div className="aspect-video w-full rounded-md bg-muted animate-pulse" />
 });
@@ -77,18 +77,13 @@ export default function Home() {
     }
   }, [toast]); // The callback now only depends on `toast`, making it stable
 
-  // Memoize the WeatherMap component to prevent it from re-rendering when the language changes.
-  const mapComponent = useMemo(() => {
-    return <WeatherMap onLocationSelect={handleLocationSelect} />;
-  }, [handleLocationSelect]);
-
   return (
     <div className="flex flex-col min-h-screen bg-background font-body">
       <Header language={language} setLanguage={setLanguage} />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 min-h-[60vh] lg:min-h-0">
-            {mapComponent}
+            <WeatherMap onLocationSelect={handleLocationSelect} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
             <Alerts analysis={analysis} loading={loading} />
