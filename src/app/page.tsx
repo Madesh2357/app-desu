@@ -49,12 +49,12 @@ export default function Home() {
       let title = "Error Fetching Weather Analysis";
       let description = "An unknown error occurred. Please try again later.";
 
-      if (error.status === 429) {
+      if (error.message?.includes("429")) {
           title = "API Quota Exceeded";
           description = "Displaying sample data. Please try again tomorrow.";
           setAnalysis(sampleAnalysis);
           localStorage.setItem('lastSafeCatchAnalysis', JSON.stringify(sampleAnalysis));
-      } else if (error.status === 'FAILED_PRECONDITION') {
+      } else if (error.status === 'FAILED_PRECONDITION' || error.message?.includes('API key')) {
         description = "The Google AI API key is missing or invalid. Please add GOOGLE_API_KEY=your_key_here to the .env file and restart the server."
       } else if (error instanceof Error) {
         description = error.message;
