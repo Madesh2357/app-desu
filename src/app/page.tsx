@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/header';
 import { Alerts } from '@/components/alerts';
@@ -23,7 +23,6 @@ export default function Home() {
   const [language, setLanguage] = useState('en');
   const { toast } = useToast();
 
-  // Use a ref to get the latest language value in the callback without re-creating the function
   const languageRef = useRef(language);
   languageRef.current = language;
 
@@ -78,13 +77,18 @@ export default function Home() {
     }
   }, [toast]); // The callback now only depends on `toast`, making it stable
 
+  // Memoize the WeatherMap component to prevent it from re-rendering when the language changes.
+  const mapComponent = useMemo(() => {
+    return <WeatherMap onLocationSelect={handleLocationSelect} />;
+  }, [handleLocationSelect]);
+
   return (
     <div className="flex flex-col min-h-screen bg-background font-body">
       <Header language={language} setLanguage={setLanguage} />
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 min-h-[60vh] lg:min-h-0">
-            <WeatherMap onLocationSelect={handleLocationSelect} />
+            {mapComponent}
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
             <Alerts analysis={analysis} loading={loading} />
