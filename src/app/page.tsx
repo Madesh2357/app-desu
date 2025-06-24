@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/header';
 import { Alerts } from '@/components/alerts';
@@ -20,13 +20,30 @@ export default function Home() {
   const [language, setLanguage] = useState('en');
   const { toast } = useToast();
 
+  // Load last analysis from localStorage on initial render
+  useEffect(() => {
+    try {
+      const savedAnalysis = localStorage.getItem('lastSafeCatchAnalysis');
+      if (savedAnalysis) {
+        setAnalysis(JSON.parse(savedAnalysis));
+      }
+    } catch (error) {
+      console.error("Failed to load analysis from localStorage", error);
+      // If parsing fails, remove the invalid item
+      localStorage.removeItem('lastSafeCatchAnalysis');
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
   const handleLocationSelect = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
     setAnalysis(null);
     try {
       const result = await fetchWeatherAnalysis({ lat, lon, language });
       setAnalysis(result);
-    } catch (error: any) {
+      // Save successful analysis to localStorage
+      localStorage.setItem('lastSafeCatchAnalysis', JSON.stringify(result));
+    } catch (error: any)
+      {
       console.error(error);
       let description = "An unknown error occurred. Please try again later.";
 

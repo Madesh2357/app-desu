@@ -18,17 +18,18 @@ const GetWeatherAnalysisInputSchema = z.object({
 export type GetWeatherAnalysisInput = z.infer<typeof GetWeatherAnalysisInputSchema>;
 
 const GetWeatherAnalysisOutputSchema = z.object({
-    isCoastal: z.boolean().describe("True if the location is on a seashore or oceanic region, otherwise false."),
+    isCoastal: z.boolean().describe("True if the location is on a seashore, an oceanic region, or a land location within 10km of a coastline. Otherwise, false."),
     temperature: z.number().describe("The current temperature in Celsius."),
     windSpeed: z.string().describe("The current wind speed, including units (e.g., '15 km/h')."),
     windDirection: z.string().describe("The current wind direction (e.g., 'from the SW')."),
     humidity: z.number().describe("The current humidity as a percentage."),
-    cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present, as a percentage from 0 to 100. Omit this field if isCoastal is false.").optional(),
+    cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present now. Omit this field if isCoastal is false.").optional(),
     forecast: z.array(z.object({
         time: z.string().describe("The time period for this forecast (e.g., 'Next 12 Hours', '12-24 Hours')."),
         summary: z.string().describe("A brief, simple summary of the weather (e.g., 'Clear skies', 'Chance of rain')."),
         icon: z.string().describe("A relevant icon name from the lucide-react library (e.g., 'Sun', 'CloudRain', 'Wind')."),
         temperature: z.string().describe("The expected temperature range, e.g., '25-28°C'."),
+        cycloneRiskLevel: z.enum(['none', 'low', 'medium', 'high']).describe("The predicted cyclone risk for this specific time period. This field is ONLY required if 'isCoastal' is true, otherwise it can be omitted.").optional(),
     })).describe("A 72-hour forecast broken down into intervals."),
     recommendations: z.string().describe("Actionable recommendations for individuals in the area. If coastal, focus on maritime safety. Provide all text in the requested language."),
 });
@@ -44,7 +45,7 @@ const prompt = ai.definePrompt({
   name: 'weatherAnalysisPrompt',
   input: {schema: GetWeatherAnalysisInputSchema},
   output: {schema: GetWeatherAnalysisOutputSchema},
-  prompt: `You are an expert meteorologist providing easily understandable weather analysis.
+  prompt: `You are an expert meteorologist providing easily understandable weather analysis for fishermen and coastal communities.
   Your entire response for any text field must be in the language specified by the language code: {{{language}}}.
 
   Location:
@@ -52,11 +53,12 @@ const prompt = ai.definePrompt({
   Longitude: {{{lon}}}
 
   Tasks:
-  1.  **Location Type**: First, determine if the location is on a seashore or in an oceanic region. Set 'isCoastal' to true if it is, and false otherwise.
+  1.  **Cyclone Risk Eligibility**: First, determine if the provided coordinates are for an oceanic location, a seashore, or a land location. If it is a land location, estimate its distance to the nearest major coastline. Based on this, set the 'isCoastal' field to true if the location is oceanic, a seashore, OR if it is a land location within 10km of a coastline. Otherwise, set 'isCoastal' to false.
   2.  **Current Conditions**: Provide the current temperature (Celsius), wind speed (km/h), wind direction, and humidity.
-  3.  **Cyclone Risk**: If 'isCoastal' is true, provide an estimated 'cycloneProbability' (0-100%). Base this on factors like wind speed, humidity, and your internal knowledge of cyclone formation patterns. If 'isCoastal' is false, you MUST omit the 'cycloneProbability' field entirely.
+  3.  **Current Cyclone Risk**: If 'isCoastal' is true, provide an estimated current 'cycloneProbability' (0-100%). Base this on factors like wind speed, humidity, and your internal knowledge of cyclone formation patterns. If 'isCoastal' is false, you MUST omit the 'cycloneProbability' field entirely.
   4.  **Visual Forecast**: Provide a 72-hour forecast broken into six 12-hour intervals. For each interval, provide a simple summary, temperature range, and an icon. The icon MUST be one of the following exact names: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
-  5.  **Simple Recommendations**: Provide actionable recommendations. If 'isCoastal' is true, focus on safety for fishermen and coastal communities. If 'isCoastal' is false, give general weather advice. Keep the language simple and clear.
+  5.  **Forecasted Cyclone Risk**: If 'isCoastal' is true, you MUST also provide a 'cycloneRiskLevel' for EACH of the six forecast intervals. The value must be one of: 'none', 'low', 'medium', or 'high', based on your prediction for that time period. If 'isCoastal' is false, omit this field.
+  6.  **Simple Recommendations**: Provide actionable recommendations. If 'isCoastal' is true, focus on safety for fishermen and coastal communities, taking into account the current and forecasted cyclone risk. If 'isCoastal' is false, give general weather advice. Keep the language simple and clear for a non-expert audience.
   `,
 });
 

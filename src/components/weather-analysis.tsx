@@ -10,6 +10,19 @@ type WeatherAnalysisProps = {
   loading: boolean;
 };
 
+const CycloneRiskIndicator = ({ level }: { level: 'low' | 'medium' | 'high' | 'none' }) => {
+    if (level === 'none') {
+        return null;
+    }
+    const styles = {
+        low: 'text-primary',
+        medium: 'text-accent',
+        high: 'text-destructive',
+    };
+    return <ShieldAlert className={`h-4 w-4 mt-1 ${styles[level]}`} title={`Cyclone Risk: ${level}`} />;
+};
+
+
 export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
   if (loading) {
     return (
@@ -29,12 +42,12 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
             <Separator />
             <Skeleton className="h-4 w-1/3" />
             <div className="grid grid-cols-3 gap-2">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
             </div>
         </CardContent>
       </Card>
@@ -98,7 +111,7 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
           <>
             <Separator />
             <div>
-                <h3 className="font-semibold text-sm mb-2 flex items-center"><ShieldAlert className="mr-2 h-4 w-4"/> Cyclone Probability</h3>
+                <h3 className="font-semibold text-sm mb-2 flex items-center"><ShieldAlert className="mr-2 h-4 w-4"/> Current Cyclone Probability</h3>
                 <p className={`text-2xl font-bold ${probabilityColor}`}>{analysis.cycloneProbability}%</p>
             </div>
           </>
@@ -110,11 +123,12 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
           <h3 className="font-semibold text-sm mb-2 flex items-center"><CalendarClock className="mr-2 h-4 w-4"/> 72-Hour Forecast</h3>
           <div className="grid grid-cols-3 gap-2 text-center">
             {analysis.forecast.map((item, index) => (
-              <div key={index} className="flex flex-col items-center justify-center p-2 rounded-md bg-muted/50">
+              <div key={index} className="flex flex-col items-center justify-start p-2 rounded-md bg-muted/50 min-h-[120px]">
                 <p className="text-xs font-semibold">{item.time}</p>
                 <DynamicIcon name={item.icon} className="h-8 w-8 my-1 text-accent" />
                 <p className="text-xs font-bold">{item.temperature}</p>
-                <p className="text-xs text-muted-foreground mt-1">{item.summary}</p>
+                <p className="text-xs text-muted-foreground mt-1 flex-grow">{item.summary}</p>
+                {item.cycloneRiskLevel && <CycloneRiskIndicator level={item.cycloneRiskLevel} />}
               </div>
             ))}
           </div>
