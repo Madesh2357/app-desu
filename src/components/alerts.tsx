@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Bell, TriangleAlert, Settings, CheckCircle } from "lucide-react";
+import { Bell, TriangleAlert, Settings, CheckCircle, ShieldQuestion } from "lucide-react";
 import type { GetWeatherAnalysisOutput } from "@/ai/flows/get-weather-analysis";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -12,35 +12,47 @@ type AlertsProps = {
 };
 
 export function Alerts({ analysis, loading }: AlertsProps) {
-  const showAlert = analysis?.isCoastal && analysis.cycloneProbability && analysis.cycloneProbability > 50;
+    const riskLevel = (() => {
+        if (!analysis?.isCoastal || typeof analysis.cycloneProbability !== 'number') return 'none';
+        if (analysis.cycloneProbability > 75) return 'high';
+        if (analysis.cycloneProbability > 40) return 'medium';
+        if (analysis.cycloneProbability > 10) return 'low';
+        return 'none';
+    })();
   
-  const getAlertVariant = () => {
-    if (!analysis || !showAlert || !analysis.cycloneProbability) return 'default';
-    if (analysis.cycloneProbability > 75) return 'destructive';
-    return 'accent';
-  }
-
-  const variant = getAlertVariant();
-
-  const alertStyles = {
-    destructive: {
+  const alertConfig = {
+    high: {
       container: "border-destructive/50 bg-destructive/10",
-      icon: "text-destructive",
-      title: "text-destructive"
+      icon: TriangleAlert,
+      iconClass: "text-destructive",
+      titleClass: "text-destructive",
+      title: "High Cyclone Probability",
     },
-    accent: {
+    medium: {
       container: "border-accent/50 bg-accent/10",
-      icon: "text-accent",
-      title: "text-accent"
+      icon: TriangleAlert,
+      iconClass: "text-accent",
+      titleClass: "text-accent",
+      title: "Medium Cyclone Risk",
     },
-    default: {
+    low: {
+      container: "border-chart-2/50 bg-chart-2/10",
+      icon: ShieldQuestion,
+      iconClass: "text-chart-2",
+      titleClass: "text-chart-2",
+      title: "Low Cyclone Possibility",
+    },
+    none: {
       container: "border-transparent bg-secondary/30",
-      icon: "text-primary",
-      title: "text-foreground"
+      icon: CheckCircle,
+      iconClass: "text-primary",
+      titleClass: "text-foreground",
+      title: "No Active Alerts",
     }
   };
   
-  const currentStyle = alertStyles[variant];
+  const currentAlert = alertConfig[riskLevel];
+  const Icon = currentAlert.icon;
 
   return (
     <Card>
@@ -59,30 +71,18 @@ export function Alerts({ analysis, loading }: AlertsProps) {
                 <Skeleton className="h-4 w-full mt-2" />
              </div>
           </div>
-        ) : showAlert && analysis ? (
-          <div className={`flex items-start space-x-4 rounded-md border p-4 ${currentStyle.container}`}>
-            <TriangleAlert className={`h-5 w-5 flex-shrink-0 mt-0.5 ${currentStyle.icon}`} />
+        ) : (
+          <div className={`flex items-start space-x-4 rounded-md border p-4 ${currentAlert.container}`}>
+            <Icon className={`h-5 w-5 flex-shrink-0 mt-0.5 ${currentAlert.iconClass}`} />
             <div className="flex-1 space-y-1">
-              <p className={`text-sm font-semibold ${currentStyle.title}`}>
-                {analysis.cycloneProbability && analysis.cycloneProbability > 75 ? 'High Cyclone Probability' : 'Elevated Cyclone Risk'}
+              <p className={`text-sm font-semibold ${currentAlert.titleClass}`}>
+                {currentAlert.title}
               </p>
               <p className="text-sm text-muted-foreground">
-                {analysis.recommendations}
+                 {analysis ? analysis.recommendations : "Current conditions appear safe. Click the map to check other areas."}
               </p>
             </div>
           </div>
-        ) : (
-           <div className={`flex items-start space-x-4 rounded-md border p-4 ${alertStyles.default.container}`}>
-             <CheckCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${alertStyles.default.icon}`} />
-             <div className="flex-1 space-y-1">
-               <p className={`text-sm font-semibold ${alertStyles.default.title}`}>
-                 No Active Alerts
-               </p>
-               <p className="text-sm text-muted-foreground">
-                 {analysis ? analysis.recommendations : "Current conditions appear safe. Click the map to check other areas."}
-               </p>
-             </div>
-           </div>
         )}
         
         <Separator />

@@ -15,7 +15,7 @@ const CycloneRiskIndicator = ({ level }: { level: 'low' | 'medium' | 'high' | 'n
         return null;
     }
     const styles = {
-        low: 'text-primary',
+        low: 'text-chart-2',
         medium: 'text-accent',
         high: 'text-destructive',
     };
@@ -73,8 +73,10 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
   const probabilityColor =
     analysis.cycloneProbability && analysis.cycloneProbability > 75
       ? "text-destructive"
-      : analysis.cycloneProbability && analysis.cycloneProbability > 50
+      : analysis.cycloneProbability && analysis.cycloneProbability > 40
       ? "text-accent"
+      : analysis.cycloneProbability && analysis.cycloneProbability > 10
+      ? "text-chart-2"
       : "text-primary";
 
   return (
