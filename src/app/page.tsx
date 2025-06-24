@@ -8,6 +8,7 @@ import { WeatherAnalysis } from '@/components/weather-analysis';
 import { fetchWeatherAnalysis } from '@/app/actions';
 import type { GetWeatherAnalysisOutput } from '@/ai/flows/get-weather-analysis';
 import { useToast } from "@/hooks/use-toast";
+import { sampleAnalysis } from '@/lib/sample-analysis';
 
 const WeatherMap = dynamic(() => import('@/components/weather-map').then(mod => mod.WeatherMap), {
     ssr: false,
@@ -45,10 +46,14 @@ export default function Home() {
     } catch (error: any)
       {
       console.error(error);
+      let title = "Error Fetching Weather Analysis";
       let description = "An unknown error occurred. Please try again later.";
 
       if (error.status === 429) {
-          description = "You have exceeded the daily request limit for the AI service. Please try again tomorrow."
+          title = "API Quota Exceeded";
+          description = "Displaying sample data. Please try again tomorrow.";
+          setAnalysis(sampleAnalysis);
+          localStorage.setItem('lastSafeCatchAnalysis', JSON.stringify(sampleAnalysis));
       } else if (error.status === 'FAILED_PRECONDITION') {
         description = "The Google AI API key is missing or invalid. Please add GOOGLE_API_KEY=your_key_here to the .env file and restart the server."
       } else if (error instanceof Error) {
@@ -57,7 +62,7 @@ export default function Home() {
       
       toast({
         variant: "destructive",
-        title: "Error Fetching Weather Analysis",
+        title: title,
         description: description,
       });
     } finally {
