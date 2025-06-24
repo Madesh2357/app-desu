@@ -45,6 +45,7 @@ export default function Home() {
     setLoading(true);
     setAnalysis(null);
     try {
+      // Use the ref here to avoid dependency on the language state
       const result = await fetchWeatherAnalysis({ lat, lon, language: languageRef.current });
       setAnalysis(result);
       // Save successful analysis to localStorage
@@ -55,7 +56,8 @@ export default function Home() {
       let title = "Error Fetching Weather Analysis";
       let description = "An unknown error occurred. Please try again later.";
 
-      if (error.message?.includes("429")) {
+      // More robust check for quota error
+      if (error.message?.includes("429") || error.message?.includes("Quota")) {
           title = "API Quota Exceeded";
           description = "Displaying sample data. Please try again tomorrow.";
           setAnalysis(sampleAnalysis);
@@ -74,7 +76,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast]); // The callback now only depends on `toast`, making it stable
 
   return (
     <div className="flex flex-col min-h-screen bg-background font-body">
