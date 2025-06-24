@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'SafeCatch',
-  description: 'Intelligent Cyclone Prediction and Alert System',
+  title: 'ALL-IN-1 FISHERMAN app',
+  description: 'Your complete companion for safer and smarter fishing.',
 };
 
 export default function RootLayout({

@@ -1,4 +1,4 @@
-import { CircleUser, Wind } from 'lucide-react';
+import { CircleUser } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,10 +19,10 @@ export default function Header({ language, setLanguage }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-2">
-          <Wind className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold font-headline text-foreground">
-            SafeCatch
+        <div className="flex items-center gap-3">
+          <span className="text-2xl" role="img" aria-label="wave">🌊</span>
+          <h1 className="text-lg font-bold font-headline text-foreground sm:text-xl">
+            ALL-IN-1 FISHERMAN app
           </h1>
         </div>
         <div className="flex items-center gap-4">
