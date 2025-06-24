@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Header from '@/components/header';
 import { Alerts } from '@/components/alerts';
@@ -23,6 +23,10 @@ export default function Home() {
   const [language, setLanguage] = useState('en');
   const { toast } = useToast();
 
+  // Use a ref to get the latest language value in the callback without re-creating the function
+  const languageRef = useRef(language);
+  languageRef.current = language;
+
   // Load last analysis from localStorage on initial render
   useEffect(() => {
     try {
@@ -41,7 +45,7 @@ export default function Home() {
     setLoading(true);
     setAnalysis(null);
     try {
-      const result = await fetchWeatherAnalysis({ lat, lon, language });
+      const result = await fetchWeatherAnalysis({ lat, lon, language: languageRef.current });
       setAnalysis(result);
       // Save successful analysis to localStorage
       localStorage.setItem('lastSafeCatchAnalysis', JSON.stringify(result));
@@ -70,7 +74,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [toast, language]);
+  }, [toast]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background font-body">
