@@ -57,8 +57,8 @@ export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
         setLocation(e.latlng, "Selected Location");
       });
 
-      // Attempt to geolocate the user on initial load
-      map.locate().on('locationfound', (e: L.LocationEvent) => {
+      // Attempt to geolocate the user on initial load with high accuracy
+      map.locate({ enableHighAccuracy: true }).on('locationfound', (e: L.LocationEvent) => {
         setLocation(e.latlng, "Your Location");
       });
     }
@@ -67,7 +67,7 @@ export function WeatherMap({ onLocationSelect }: WeatherMapProps) {
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.stopLocate(); // Important to prevent async events on a removed map
-        mapInstanceRef.current.remove();
+        mapInstanceeRef.current.remove();
         mapInstanceRef.current = null;
       }
     };

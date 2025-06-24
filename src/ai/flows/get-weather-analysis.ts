@@ -18,7 +18,7 @@ const GetWeatherAnalysisInputSchema = z.object({
 export type GetWeatherAnalysisInput = z.infer<typeof GetWeatherAnalysisInputSchema>;
 
 const GetWeatherAnalysisOutputSchema = z.object({
-    isCoastal: z.boolean().describe("True if the location is on a seashore, an oceanic region, or a land location within 10km of a coastline. Otherwise, false."),
+    isCoastal: z.boolean().describe("True if the location is on a seashore or an oceanic region. False for all land locations."),
     temperature: z.number().describe("The current temperature in Celsius."),
     windSpeed: z.string().describe("The current wind speed, including units (e.g., '15 km/h')."),
     windDirection: z.string().describe("The current wind direction (e.g., 'from the SW')."),
@@ -53,7 +53,7 @@ const prompt = ai.definePrompt({
   Longitude: {{{lon}}}
 
   Tasks:
-  1.  **Cyclone Risk Eligibility**: First, determine if the provided coordinates are for an oceanic location, a seashore, or a land location. If it is a land location, estimate its distance to the nearest major coastline. Based on this, set the 'isCoastal' field to true if the location is oceanic, a seashore, OR if it is a land location within 10km of a coastline. Otherwise, set 'isCoastal' to false.
+  1.  **Coastal Status**: The primary users are fishermen. Determine if the provided coordinates are for an oceanic location or a seashore. Set the 'isCoastal' field to true ONLY for these locations. For ALL land locations, regardless of proximity to the coast, set 'isCoastal' to false.
   2.  **Current Conditions**: Provide the current temperature (Celsius), wind speed (km/h), wind direction, and humidity.
   3.  **Current Cyclone Risk**: If 'isCoastal' is true, provide an estimated current 'cycloneProbability' (0-100%). Base this on factors like wind speed, humidity, and your internal knowledge of cyclone formation patterns. If 'isCoastal' is false, you MUST omit the 'cycloneProbability' field entirely.
   4.  **Visual Forecast**: Provide a 72-hour forecast broken into six 12-hour intervals. For each interval, provide a simple summary, temperature range, and an icon. The icon MUST be one of the following exact names: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
