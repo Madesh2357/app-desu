@@ -9,6 +9,8 @@ import { fetchWeatherAnalysis } from '@/app/actions';
 import type { GetWeatherAnalysisOutput } from '@/ai/flows/get-weather-analysis';
 import { useToast } from "@/hooks/use-toast";
 import { sampleAnalysis } from '@/lib/sample-analysis';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { HistoricalWeather } from '@/components/historical-weather';
 
 const WeatherMap = dynamic(() => import('@/components/weather-map').then(mod => mod.WeatherMap), {
     ssr: false,
@@ -54,7 +56,7 @@ export default function Home() {
           description = "Displaying sample data. Please try again tomorrow.";
           setAnalysis(sampleAnalysis);
           localStorage.setItem('lastSafeCatchAnalysis', JSON.stringify(sampleAnalysis));
-      } else if (error.status === 'FAILED_PRECONDITION' || error.message?.includes('API key')) {
+      } else if (error.message?.includes('API key')) {
         description = "The Google AI API key is missing or invalid. Please add GOOGLE_API_KEY=your_key_here to the .env file and restart the server."
       } else if (error instanceof Error) {
         description = error.message;
@@ -80,7 +82,18 @@ export default function Home() {
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
             <Alerts analysis={analysis} loading={loading} />
-            <WeatherAnalysis analysis={analysis} loading={loading} />
+            <Tabs defaultValue="analysis" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="analysis">Current Analysis</TabsTrigger>
+                <TabsTrigger value="historical">Historical Data</TabsTrigger>
+              </TabsList>
+              <TabsContent value="analysis">
+                <WeatherAnalysis analysis={analysis} loading={loading} />
+              </TabsContent>
+              <TabsContent value="historical">
+                <HistoricalWeather />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </main>

@@ -1,1 +1,1 @@
-// This service is no longer used and can be deleted.
+// This file is no longer used and has been cleared.
