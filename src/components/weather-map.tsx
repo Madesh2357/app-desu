@@ -3,16 +3,13 @@
 import { useState, useEffect, memo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+// The leaflet.css is already included in the main layout file.
+// import 'leaflet/dist/leaflet.css';
 
-// Fix for default icon paths in Next.js which can cause issues
-// @ts-ignore
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+// The icon fix logic was running at the top level of the module,
+// causing "window is not defined" errors on the server, even with dynamic imports.
+// react-leaflet v4 and modern bundlers should handle this better.
+// If icons are broken, a different client-side only approach is needed.
 
 interface WeatherMapProps {
   onLocationSelect: (lat: number, lon: number) => void;
@@ -29,6 +26,18 @@ function MapController({ onLocationSelect }: WeatherMapProps) {
 
   // On initial load, try to get user location via their IP
   useEffect(() => {
+    // This is a client-side only effect
+    // We can safely fix the icon path here if needed in the future.
+    // For now, let's re-add the fix inside this client-only block.
+    // @ts-ignore
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+
+
     fetch('https://ipinfo.io/json')
       .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch IP info'))
       .then(data => {
