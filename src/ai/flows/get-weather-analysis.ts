@@ -69,7 +69,7 @@ const prompt = ai.definePrompt({
       - The average humidity for the period (%).
   5.  **Simple Recommendations**: Provide actionable recommendations based on the full analysis.
       - If 'isCoastal' is true, provide specific, simple advice for fishermen and coastal communities based on the cyclone risk.
-      - If 'isCoastal' is false, provide general weather advice.
+      - If 'isCoastal' is false, provide general weather advice. You MUST NOT mention cyclones, cyclone risk, or any related maritime warnings for non-coastal locations.
       - Keep the language extremely simple and easy to understand for all audiences.
   `,
 });
