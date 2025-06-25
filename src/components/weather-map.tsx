@@ -3,13 +3,6 @@
 import { useState, useEffect, memo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
-// The leaflet.css is already included in the main layout file.
-// import 'leaflet/dist/leaflet.css';
-
-// The icon fix logic was running at the top level of the module,
-// causing "window is not defined" errors on the server, even with dynamic imports.
-// react-leaflet v4 and modern bundlers should handle this better.
-// If icons are broken, a different client-side only approach is needed.
 
 interface WeatherMapProps {
   onLocationSelect: (lat: number, lon: number) => void;
@@ -19,16 +12,12 @@ const INITIAL_CENTER: L.LatLngTuple = [20.5937, 78.9629]; // Center of India
 const INITIAL_ZOOM = 5;
 
 // This component handles map events and the marker's position
-function MapController({ onLocationSelect }: WeatherMapProps) {
+function MapEvents({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
   const [position, setPosition] = useState<L.LatLng | null>(null);
-  const [popupText, setPopupText] = useState("Click the map to get a forecast.");
   const map = useMap();
 
-  // On initial load, try to get user location via their IP
   useEffect(() => {
-    // This is a client-side only effect
-    // We can safely fix the icon path here if needed in the future.
-    // For now, let's re-add the fix inside this client-only block.
+    // Fix for default icon path issue with webpack
     // @ts-ignore
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
@@ -37,43 +26,32 @@ function MapController({ onLocationSelect }: WeatherMapProps) {
       shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
 
+    // On initial load, try to get user location
+    map.locate().on("locationfound", function (e) {
+      setPosition(e.latlng);
+      map.flyTo(e.latlng, 10);
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    }).on("locationerror", function(e){
+      console.warn("Could not fetch initial location:", e.message);
+    });
+  }, [map, onLocationSelect]);
 
-    fetch('https://ipinfo.io/json')
-      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch IP info'))
-      .then(data => {
-        if (data.loc) {
-          const [lat, lon] = data.loc.split(',').map(Number);
-          const latlng = L.latLng(lat, lon);
-          map.flyTo(latlng, 10);
-          setPosition(latlng);
-          setPopupText("Your estimated location. Click to analyze.");
-        }
-      })
-      .catch(error => {
-        console.warn("Could not fetch initial location:", error);
-        // Silently fail if IP lookup fails, user can still click the map.
-      });
-  }, [map]);
-
-  // Handle map click events
   useMapEvents({
     click(e) {
       const { lat, lng } = e.latlng;
       setPosition(e.latlng);
-      setPopupText("Selected Location");
       onLocationSelect(lat, lng);
     },
   });
 
-  // Render the marker and popup if a position is set
   return position === null ? null : (
     <Marker position={position}>
-      <Popup autoOpen={true}>{popupText}</Popup>
+      <Popup>Selected Location</Popup>
     </Marker>
   );
 }
 
-// Un-memoized component
+
 function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
   return (
     <MapContainer
@@ -86,12 +64,11 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <MapController onLocationSelect={onLocationSelect} />
+      <MapEvents onLocationSelect={onLocationSelect} />
     </MapContainer>
   );
 }
 
-// Memoize the component to prevent re-renders when parent state (like language) changes
 const WeatherMap = memo(BaseWeatherMap);
 
 export default WeatherMap;
