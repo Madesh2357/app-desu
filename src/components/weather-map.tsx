@@ -38,10 +38,13 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
       }).addTo(map);
 
       const updateMarkerAndSelect = (latlng: L.LatLng) => {
+        // Add a guard to ensure map instance exists before using it
+        if (!mapInstanceRef.current) return;
+        
         if (markerRef.current) {
           markerRef.current.setLatLng(latlng);
         } else {
-          markerRef.current = L.marker(latlng).addTo(map);
+          markerRef.current = L.marker(latlng).addTo(mapInstanceRef.current);
         }
         markerRef.current.bindPopup("Selected Location").openPopup();
         onLocationSelect(latlng.lat, latlng.lng);
@@ -53,8 +56,12 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
 
       // Try to get user's location automatically on load
       map.locate({ enableHighAccuracy: true }).on("locationfound", (e) => {
-        map.flyTo(e.latlng, 10);
-        updateMarkerAndSelect(e.latlng);
+        // In React's Strict Mode, the component might unmount and remount.
+        // This check ensures the map container is still in the DOM before we try to manipulate it.
+        if (mapContainerRef.current?.isConnected) {
+            map.flyTo(e.latlng, 10);
+            updateMarkerAndSelect(e.latlng);
+        }
       }).on("locationerror", () => {
         // If it fails (e.g. permission denied, no GPS signal), do nothing.
         // The user can still click the map to get a forecast.
@@ -65,11 +72,14 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
     // Cleanup function to run when the component unmounts.
     return () => {
       if (mapInstanceRef.current) {
+        // The .remove() method also clears all event listeners, which is crucial here.
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [onLocationSelect]);
+    // By keeping the dependency array empty, we ensure this effect runs only once on mount,
+    // which is the correct behavior for initializing a map library like Leaflet.
+  }, []);
 
   return (
     <div 
