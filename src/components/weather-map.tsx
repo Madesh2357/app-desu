@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, memo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -12,7 +11,18 @@ interface WeatherMapProps {
 const INITIAL_CENTER: L.LatLngTuple = [20.5937, 78.9629];
 const INITIAL_ZOOM = 5;
 
-export default function WeatherMap({ onLocationSelect }: WeatherMapProps) {
+// Fix for default icon path issue with bundlers.
+// This needs to run only once.
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+
+function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -20,16 +30,6 @@ export default function WeatherMap({ onLocationSelect }: WeatherMapProps) {
   useEffect(() => {
     // This effect runs only once on mount, and the check ensures the map is initialized only once.
     if (mapContainerRef.current && !mapInstanceRef.current) {
-      
-      // Fix for default icon path issue with bundlers like webpack
-      // @ts-ignore
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-
       const map = L.map(mapContainerRef.current).setView(INITIAL_CENTER, INITIAL_ZOOM);
       mapInstanceRef.current = map;
 
@@ -51,10 +51,13 @@ export default function WeatherMap({ onLocationSelect }: WeatherMapProps) {
         updateMarkerAndSelect(e.latlng);
       });
 
-      map.locate().on("locationfound", (e) => {
+      // Try to get user's location automatically on load
+      map.locate({ enableHighAccuracy: true }).on("locationfound", (e) => {
         map.flyTo(e.latlng, 10);
         updateMarkerAndSelect(e.latlng);
       }).on("locationerror", () => {
+        // If it fails (e.g. permission denied, no GPS signal), do nothing.
+        // The user can still click the map to get a forecast.
         console.warn("Could not fetch initial location. Please click the map.");
       });
     }
@@ -75,3 +78,7 @@ export default function WeatherMap({ onLocationSelect }: WeatherMapProps) {
     />
   );
 }
+
+const WeatherMap = memo(BaseWeatherMap);
+
+export default WeatherMap;
