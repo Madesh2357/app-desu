@@ -47,30 +47,43 @@ const prompt = ai.definePrompt({
   name: 'weatherAnalysisPrompt',
   input: {schema: GetWeatherAnalysisInputSchema},
   output: {schema: GetWeatherAnalysisOutputSchema},
-  prompt: `You are an expert meteorologist with access to advanced climate models and historical weather data. Your task is to provide a comprehensive weather and cyclone risk analysis.
+  prompt: `You are an expert meteorologist with access to advanced climate models and historical weather data. Your primary task is to provide a weather analysis tailored to the user's location.
+
   Your entire response for any text field must be in the language specified by the language code: {{{language}}}.
 
   Location:
   Latitude: {{{lat}}}
   Longitude: {{{lon}}}
 
-  Tasks:
-  1.  **Coastal Status**: Determine if the provided coordinates are for an oceanic location or a seashore. Set 'isCoastal' to true ONLY for these locations. For ALL other land locations, set 'isCoastal' to false.
-  2.  **Current Conditions**: Provide the current temperature (Celsius), wind speed (km/h), wind direction, and humidity.
-  3.  **Cyclone Analysis (Coastal Only)**: If 'isCoastal' is true, perform a cyclone risk analysis.
-      - Based on current conditions (sea surface temperature, wind shear, humidity), calculate and provide the 'cycloneProbability' as a percentage from 0 to 100.
-      - For the 72-hour forecast, determine the 'cycloneRiskLevel' ('none', 'low', 'medium', 'high') for each 12-hour interval based on evolving conditions.
-      - If 'isCoastal' is false, you MUST omit the 'cycloneProbability' and 'cycloneRiskLevel' fields.
-  4.  **Visual Forecast**: Provide a 72-hour forecast broken into six 12-hour intervals. For each interval, provide:
-      - A simple summary.
-      - Temperature range (e.g., '25-28°C').
-      - An icon from: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
-      - The average wind speed for the period (km/h).
-      - The average humidity for the period (%).
-  5.  **Simple Recommendations**: Provide actionable recommendations based on the full analysis.
-      - If 'isCoastal' is true, provide specific, simple advice for fishermen and coastal communities based on the cyclone risk.
-      - If 'isCoastal' is false, provide general weather advice. You MUST NOT mention cyclones, cyclone risk, or any related maritime warnings for non-coastal locations.
-      - Keep the language extremely simple and easy to understand for all audiences.
+  Follow these steps precisely:
+
+  1.  **COASTAL DETERMINATION (CRITICAL):**
+      First, determine if the coordinates are for an oceanic region or a seashore.
+      - If YES, set \`isCoastal\` to \`true\`.
+      - If NO (it is a landlocked location), set \`isCoastal\` to \`false\`.
+      This determination dictates the rest of your response.
+
+  2.  **PROVIDE UNIVERSAL WEATHER DATA:**
+      Regardless of coastal status, provide the following:
+      - \`temperature\`: Current temperature in Celsius.
+      - \`windSpeed\`: Current wind speed in km/h.
+      - \`windDirection\`: Current wind direction.
+      - \`humidity\`: Current humidity percentage.
+      - \`forecast\`: A 72-hour forecast broken into six 12-hour intervals. Each interval needs \`time\`, \`summary\`, \`icon\`, \`temperature\`, \`windSpeed\`, and \`humidity\`. Use icons from: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
+
+  3.  **CONDITIONAL ANALYSIS (BASED ON STEP 1):**
+
+      **A. IF \`isCoastal\` IS \`true\`:**
+      - Perform a cyclone risk analysis.
+      - You MUST provide \`cycloneProbability\` (a percentage from 0-100).
+      - In the \`forecast\`, you MUST include the \`cycloneRiskLevel\` ('none', 'low', 'medium', 'high') for each interval.
+      - The \`recommendations\` MUST focus on maritime safety, advice for fishermen, and coastal communities based on the cyclone risk.
+
+      **B. IF \`isCoastal\` IS \`false\`:**
+      - You MUST NOT provide the \`cycloneProbability\` field.
+      - You MUST NOT provide the \`cycloneRiskLevel\` field in any forecast interval.
+      - The \`recommendations\` MUST be general weather advice for a landlocked area.
+      - **IMPORTANT:** Absolutely DO NOT mention cyclones, cyclone risk, the sea, fishing, or any maritime-related warnings in the \`recommendations\` or any other text field.
   `,
 });
 
