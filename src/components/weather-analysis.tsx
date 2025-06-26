@@ -79,6 +79,16 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
       : analysis.cycloneProbability && analysis.cycloneProbability > 10
       ? "text-chart-2"
       : "text-primary";
+    
+  const locationBadges = {
+    shore: { icon: Waves, label: "Shore" },
+    ocean: { icon: Sailboat, label: "Ocean" },
+    land: { icon: LandPlot, label: "Inland" }
+  };
+
+  const BadgeIcon = locationBadges[analysis.locationType]?.icon || LandPlot;
+  const badgeLabel = locationBadges[analysis.locationType]?.label || "Inland";
+
 
   return (
     <Card>
@@ -87,17 +97,10 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
             <CardTitle className="text-base font-headline font-medium mb-1">
                 Weather Analysis for <span className="text-primary">{analysis.locationName}</span>
             </CardTitle>
-            {analysis.isCoastal ? (
-                <Badge variant="secondary" className="flex items-center gap-1.5">
-                    <Sailboat className="h-3 w-3"/>
-                    Coastal
-                </Badge>
-            ) : (
-                <Badge variant="secondary" className="flex items-center gap-1.5">
-                    <LandPlot className="h-3 w-3"/>
-                    Inland
-                </Badge>
-            )}
+            <Badge variant="secondary" className="flex items-center gap-1.5">
+                <BadgeIcon className="h-3 w-3"/>
+                {badgeLabel}
+            </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -125,7 +128,7 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
             </div>
         </div>
         
-        {analysis.isCoastal && typeof analysis.cycloneProbability === 'number' && (
+        {(analysis.locationType === 'shore' || analysis.locationType === 'ocean') && typeof analysis.cycloneProbability === 'number' && (
           <>
             <Separator />
             <div>
@@ -135,7 +138,7 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
           </>
         )}
 
-        {analysis.isCoastal && analysis.tides && analysis.tides.length > 0 && (
+        {(analysis.locationType === 'shore' || analysis.locationType === 'ocean') && analysis.tides && analysis.tides.length > 0 && (
           <>
             <Separator />
             <div>

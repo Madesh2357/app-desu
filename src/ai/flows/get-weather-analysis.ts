@@ -19,18 +19,18 @@ const GetWeatherAnalysisInputSchema = z.object({
 export type GetWeatherAnalysisInput = z.infer<typeof GetWeatherAnalysisInputSchema>;
 
 const GetWeatherAnalysisOutputSchema = z.object({
-    isCoastal: z.boolean().describe("True if the location is on a seashore or an oceanic region. False for all land locations."),
+    locationType: z.enum(['shore', 'ocean', 'land']).describe("The type of the location: 'shore' for coastlines, 'ocean' for open sea, or 'land' for inland areas."),
     locationName: z.string().describe("The name of the location provided by the weather service (e.g., 'Chennai')."),
     temperature: z.number().describe("The current temperature in Celsius."),
     windSpeed: z.string().describe("The current wind speed, including units (e.g., '15 km/h')."),
     windDirection: z.string().describe("The current wind direction (e.g., 'from the SW')."),
     humidity: z.number().describe("The current humidity as a percentage."),
-    cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present now, from 0-100. This field is ONLY required if 'isCoastal' is true, otherwise it must be omitted.").optional(),
+    cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present now, from 0-100. This field is ONLY required if 'locationType' is 'shore' or 'ocean', otherwise it must be omitted.").optional(),
     tides: z.array(z.object({
         time: z.string().describe("The time of the tide (e.g., '04:30 AM')."),
         type: z.enum(['High', 'Low']).describe("The type of the tide."),
         height: z.string().describe("The estimated height of the tide in meters (e.g., '1.2m').")
-    })).describe("A simulated 24-hour tide forecast for coastal locations. This field is ONLY required if 'isCoastal' is true, otherwise it must be omitted.").optional(),
+    })).describe("A simulated 24-hour tide forecast. This field is ONLY required if 'locationType' is 'shore' or 'ocean', otherwise it must be omitted.").optional(),
     forecast: z.array(z.object({
         time: z.string().describe("The time period for this forecast (e.g., 'Next 12 Hours', '12-24 Hours')."),
         summary: z.string().describe("A brief, simple summary of the weather (e.g., 'Clear skies', 'Chance of rain')."),
@@ -38,9 +38,9 @@ const GetWeatherAnalysisOutputSchema = z.object({
         temperature: z.string().describe("The expected temperature range, e.g., '25-28°C'."),
         windSpeed: z.string().describe("The expected average wind speed for the period, e.g., '10-15 km/h'.").optional(),
         humidity: z.number().describe("The expected average humidity percentage for the period.").optional(),
-        cycloneRiskLevel: z.enum(['none', 'low', 'medium', 'high']).describe("The predicted cyclone risk for this specific time period. This field is ONLY required if 'isCoastal' is true, otherwise it must be omitted.").optional(),
+        cycloneRiskLevel: z.enum(['none', 'low', 'medium', 'high']).describe("The predicted cyclone risk for this specific time period. This field is ONLY required if 'locationType' is 'shore' or 'ocean', otherwise it must be omitted.").optional(),
     })).describe("A 72-hour forecast broken down into intervals."),
-    recommendations: z.string().describe("Actionable recommendations for individuals in the area. If coastal, focus on maritime safety. Provide all text in the requested language."),
+    recommendations: z.string().describe("Actionable recommendations for individuals in the area. If the location is 'shore' or 'ocean', focus on maritime safety. If 'land', provide general advice. Provide all text in the requested language."),
 });
 export type GetWeatherAnalysisOutput = z.infer<typeof GetWeatherAnalysisOutputSchema>;
 
@@ -68,10 +68,12 @@ const prompt = ai.definePrompt({
   1.  **FETCH REAL-TIME DATA:**
       - Use the \`getOpenWeatherData\` tool with the provided latitude and longitude to get current weather conditions. This data is the primary source for your analysis.
 
-  2.  **COASTAL DETERMINATION (CRITICAL):**
-      - Based on the data from the tool (like location name) and your own geographical knowledge, determine if the coordinates are for an oceanic region or a seashore.
-      - If YES, set \`isCoastal\` to \`true\`.
-      - If NO (it is a landlocked location), set \`isCoastal\` to \`false\`.
+  2.  **LOCATION TYPE DETERMINATION (CRITICAL):**
+      - Based on the data from the tool (like location name) and your own geographical knowledge, determine if the coordinates are for a landlocked area, a coastline, or the open ocean.
+      - You MUST set the \`locationType\` field to one of three values: 'land', 'shore', or 'ocean'.
+      -   'land': Use for any location that is significantly inland and does not border a major body of saltwater.
+      -   'shore': Use for any location that is directly on or very near the coastline of an ocean or sea.
+      -   'ocean': Use for any location that is clearly in the open ocean, far from a coastline.
       - This determination is critical and dictates the structure of your response.
 
   3.  **PROVIDE UNIVERSAL WEATHER DATA:**
@@ -81,13 +83,13 @@ const prompt = ai.definePrompt({
 
   4.  **CONDITIONAL ANALYSIS (BASED ON STEP 2):**
 
-      **A. IF \`isCoastal\` IS \`true\`:**
+      **A. IF \`locationType\` IS \`shore\` OR \`ocean\`:**
       - Perform a cyclone risk analysis. You MUST provide a \`cycloneProbability\` (a percentage from 0-100).
       - In the \`forecast\`, you MUST include the \`cycloneRiskLevel\` ('none', 'low', 'medium', 'high') for each interval.
-      - You MUST provide a simulated 24-hour \`tides\` forecast. Since you don't have a direct tide feed, create a realistic, plausible 24-hour cycle of 2 high and 2 low tides based on the location.
+      - You MUST provide a simulated 24-hour \`tides\` forecast. Create a realistic, plausible 24-hour cycle of 2 high and 2 low tides based on the location.
       - The \`recommendations\` MUST focus on maritime safety, tide warnings, advice for fishermen, and coastal communities based on the cyclone risk.
 
-      **B. IF \`isCoastal\` IS \`false\`:**
+      **B. IF \`locationType\` IS \`land\`:**
       - You MUST OMIT the \`cycloneProbability\` field.
       - You MUST OMIT the \`tides\` field.
       - You MUST OMIT the \`cycloneRiskLevel\` field in all forecast intervals.

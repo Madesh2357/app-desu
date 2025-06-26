@@ -13,7 +13,7 @@ type AlertsProps = {
 
 export function Alerts({ analysis, loading }: AlertsProps) {
     const riskLevel = (() => {
-        if (!analysis?.isCoastal || typeof analysis.cycloneProbability !== 'number') return 'none';
+        if (!analysis || analysis.locationType === 'land' || typeof analysis.cycloneProbability !== 'number') return 'none';
         if (analysis.cycloneProbability > 75) return 'high';
         if (analysis.cycloneProbability > 40) return 'medium';
         if (analysis.cycloneProbability > 10) return 'low';

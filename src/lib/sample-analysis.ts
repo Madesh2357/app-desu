@@ -1,12 +1,19 @@
 import type { GetWeatherAnalysisOutput } from '@/ai/flows/get-weather-analysis';
 
 export const sampleAnalysis: GetWeatherAnalysisOutput = {
-  isCoastal: true,
+  locationType: 'shore',
+  locationName: 'Sample City',
   temperature: 28,
   windSpeed: '15 km/h',
   windDirection: 'from the SW',
   humidity: 85,
   cycloneProbability: 65,
+  tides: [
+    { time: '02:30 AM', type: 'Low', height: '0.4m' },
+    { time: '08:45 AM', type: 'High', height: '1.8m' },
+    { time: '03:00 PM', type: 'Low', height: '0.6m' },
+    { time: '09:15 PM', type: 'High', height: '1.9m' },
+  ],
   forecast: [
     {
       time: 'Next 12 Hours',
