@@ -61,7 +61,13 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
 
         mapInstanceRef.current.locate({ enableHighAccuracy: true }).on("locationfound", (e) => {
           if (mapInstanceRef.current === map && isMounted) {
-            map.flyTo(e.latlng, 10);
+            if (e.accuracy > 100) {
+              toast({
+                title: "Low Location Accuracy",
+                description: `Your location is only accurate to ${Math.round(e.accuracy)} meters.`,
+              });
+            }
+            map.flyTo(e.latlng, 13);
             updateMarkerAndSelect(e.latlng);
           }
         }).on("locationerror", () => {
@@ -89,7 +95,13 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
             const latlng = L.latLng(data.location.lat, data.location.lng);
             
             if (isMounted && mapInstanceRef.current === map) {
-              map.flyTo(latlng, 10);
+              if (data.accuracy > 100) {
+                toast({
+                  title: "Low Location Accuracy",
+                  description: `Your location is only accurate to ${Math.round(data.accuracy)} meters.`,
+                });
+              }
+              map.flyTo(latlng, 13);
               updateMarkerAndSelect(latlng);
             }
           } catch (error) {
