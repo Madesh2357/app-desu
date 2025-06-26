@@ -69,11 +69,11 @@ const prompt = ai.definePrompt({
       - Use the \`getOpenWeatherData\` tool with the provided latitude and longitude to get current weather conditions. This data is the primary source for your analysis.
 
   2.  **LOCATION TYPE DETERMINATION (CRITICAL):**
-      - Based on the data from the tool (like location name) and your own geographical knowledge, determine if the coordinates are for a landlocked area, a coastline, or the open ocean.
+      - Based on the data from the tool and your geographical knowledge, determine the location type using these strict definitions:
       - You MUST set the \`locationType\` field to one of three values: 'land', 'shore', or 'ocean'.
-      -   'land': Use for any location that is significantly inland and does not border a major body of saltwater.
-      -   'shore': Use for any location that is directly on or very near the coastline of an ocean or sea.
-      -   'ocean': Use for any location that is clearly in the open ocean, far from a coastline.
+      -   'shore': Use for any location that is on or within 2 kilometers of a major body of saltwater (ocean or sea).
+      -   'ocean': Use for any location that is clearly in the open ocean, more than 2km from any coastline.
+      -   'land': Use for any location that is more than 2 kilometers inland from any major body of saltwater.
       - This determination is critical and dictates the structure of your response.
 
   3.  **PROVIDE UNIVERSAL WEATHER DATA:**
