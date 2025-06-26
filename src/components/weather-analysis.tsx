@@ -103,6 +103,8 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
   const BadgeIcon = locationBadges[analysis.locationType]?.icon || LandPlot;
   const badgeLabel = locationBadges[analysis.locationType]?.label || "Inland";
 
+  const currentForecast = analysis.forecast?.[0];
+  const currentEmoji = currentForecast ? iconToEmoji[currentForecast.icon] || '' : '';
 
   return (
     <Card>
@@ -123,7 +125,14 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
                 <Thermometer className="h-5 w-5 text-muted-foreground" />
                 <div>
                     <p className="text-muted-foreground">Temperature</p>
-                    <p className="font-semibold">{analysis.temperature}°C / {Math.round(analysis.temperature * 9 / 5 + 32)}°F</p>
+                    <p className="font-semibold">
+                        {analysis.temperature}°C / {Math.round(analysis.temperature * 9 / 5 + 32)}°F
+                        {currentEmoji && (
+                            <span className="ml-2" title={currentForecast?.summary}>
+                                {currentEmoji}
+                            </span>
+                        )}
+                    </p>
                 </div>
             </div>
             <div className="flex items-center gap-2">
