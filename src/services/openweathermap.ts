@@ -4,6 +4,7 @@
  *
  * - openWeatherTool - A tool that fetches current weather data from OpenWeatherMap.
  * - determineLocationType - A function that uses the Overpass API to classify a location.
+ * - reverseGeocode - A function that gets address details from the Nominatim API.
  */
 
 import { ai } from '@/ai/genkit';
@@ -139,4 +140,39 @@ export async function determineLocationType(lat: number, lon: number): Promise<'
   // 3. Fallback: if all API calls fail, assume 'land' as the safest default to prevent app errors.
   console.warn("All Overpass API checks failed; falling back to 'land' classification.");
   return 'land';
+}
+
+
+/**
+ * Gets detailed address components for a location using the Nominatim (OpenStreetMap) API.
+ * @param lat The latitude.
+ * @param lon The longitude.
+ * @returns A promise that resolves to an object with zone and district.
+ */
+export async function reverseGeocode(lat: number, lon: number): Promise<{ zone: string; district: string }> {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'FirebaseStudio-FishermanApp/1.0', // Nominatim requires a User-Agent header
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`Nominatim API error: ${response.statusText}`);
+      return { zone: '', district: '' };
+    }
+
+    const data = await response.json();
+    const address = data.address;
+
+    // Extract a reasonable "zone" (city/town/village) and "district"
+    const zone = address.city || address.town || address.village || '';
+    const district = address.state_district || address.county || '';
+
+    return { zone, district };
+  } catch (error) {
+    console.error('Reverse geocoding with Nominatim failed:', error);
+    return { zone: '', district: '' }; // Return empty strings on failure
+  }
 }

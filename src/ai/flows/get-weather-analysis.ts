@@ -9,7 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { openWeatherTool, determineLocationType } from '@/services/openweathermap';
+import { openWeatherTool, determineLocationType, reverseGeocode } from '@/services/openweathermap';
 
 const GetWeatherAnalysisInputSchema = z.object({
   lat: z.number().describe('The latitude of the location.'),
@@ -20,7 +20,7 @@ export type GetWeatherAnalysisInput = z.infer<typeof GetWeatherAnalysisInputSche
 
 const GetWeatherAnalysisOutputSchema = z.object({
     locationType: z.enum(['shore', 'ocean', 'land']).describe("The type of the location: 'shore' for coastlines, 'ocean' for open sea, or 'land' for inland areas."),
-    locationName: z.string().describe("The name of the location provided by the weather service (e.g., 'Chennai')."),
+    locationName: z.string().describe("The name of the location, formatted to include zone and district if available (e.g., 'Besant Nagar, Chennai District'). Fall back to just the location name from the weather service if not."),
     temperature: z.number().describe("The current temperature in Celsius."),
     windSpeed: z.string().describe("The current wind speed, including units (e.g., '15 km/h')."),
     windDirection: z.string().describe("The current wind direction (e.g., 'from the SW')."),
@@ -52,7 +52,9 @@ export async function getWeatherAnalysis(
 
 // This new schema is internal to the prompt, extending the user input
 const PromptInputSchema = GetWeatherAnalysisInputSchema.extend({
-  determinedLocationType: z.enum(['shore', 'ocean', 'land']).describe("The pre-determined type of the location, calculated using a separate geographical API.")
+  determinedLocationType: z.enum(['shore', 'ocean', 'land']).describe("The pre-determined type of the location, calculated using a separate geographical API."),
+  zone: z.string().describe("The zone (e.g., city, town) of the location from reverse geocoding."),
+  district: z.string().describe("The district or county of the location from reverse geocoding."),
 });
 
 const prompt = ai.definePrompt({
@@ -62,16 +64,14 @@ const prompt = ai.definePrompt({
   tools: [openWeatherTool],
   prompt: `You are an expert meteorologist and oceanographer. Your task is to provide a detailed weather analysis based on a user's location. You will use external tools for real-time data.
 
-A separate programmatic check using the OpenStreetMap API has already determined the location's geographical type.
+A separate programmatic check using the OpenStreetMap API has already determined the location's geographical type and address details.
 - **Determined Location Type: '{{{determinedLocationType}}}'**
+- **Zone (City/Town): '{{{zone}}}'**
+- **District: '{{{district}}}'**
 
 You MUST adhere to this classification. Set the \`locationType\` field in your response to this exact value ('shore', 'ocean', or 'land').
 
 Your entire response for any text field must be in the language specified by the language code: {{{language}}}.
-
-User Location:
-Latitude: {{{lat}}}
-Longitude: {{{lon}}}
 
 Follow these steps precisely:
 
@@ -79,7 +79,7 @@ Follow these steps precisely:
     - Use the \`getOpenWeatherData\` tool with the provided latitude and longitude to get current weather conditions. This data is the primary source for your analysis.
 
 2.  **PROVIDE UNIVERSAL WEATHER DATA:**
-    - Set the \`locationName\` from the tool's response.
+    - **Construct the \`locationName\` field.** If \`zone\` and \`district\` are provided and not empty, format it as "Zone, District" (e.g., "Besant Nagar, Chennai District"). If they are empty, use the location name from the \`getOpenWeatherData\` tool response as a fallback.
     - Provide current \`temperature\`, \`windSpeed\` (convert from m/s to km/h), \`windDirection\`, and \`humidity\` based on the tool's data.
     - Provide a 72-hour \`forecast\` broken into six 12-hour intervals. Use icons from: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
 
@@ -108,12 +108,17 @@ const weatherAnalysisFlow = ai.defineFlow(
     outputSchema: GetWeatherAnalysisOutputSchema,
   },
   async (input) => {
-    // Determine location type using Overpass API before calling the model
-    const determinedLocationType = await determineLocationType(input.lat, input.lon);
+    // Determine location type and geo details before calling the model
+    const [determinedLocationType, geoDetails] = await Promise.all([
+        determineLocationType(input.lat, input.lon),
+        reverseGeocode(input.lat, input.lon),
+    ]);
     
     const {output} = await prompt({
         ...input,
         determinedLocationType, // Pass the determined type to the prompt
+        zone: geoDetails.zone,
+        district: geoDetails.district,
     });
 
     if (!output) {

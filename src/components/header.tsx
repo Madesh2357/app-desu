@@ -36,6 +36,8 @@ export default function Header({ language, setLanguage }: HeaderProps) {
               <SelectItem value="ta">தமிழ்</SelectItem>
               <SelectItem value="te">తెలుగు</SelectItem>
               <SelectItem value="hi">हिन्दी</SelectItem>
+              <SelectItem value="kn">ಕನ್ನಡ</SelectItem>
+              <SelectItem value="ml">മലയാളം</SelectItem>
             </SelectContent>
           </Select>
           <DropdownMenu>
