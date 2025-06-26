@@ -9,7 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { openWeatherTool } from '@/services/openweathermap';
+import { openWeatherTool, determineLocationType } from '@/services/openweathermap';
 
 const GetWeatherAnalysisInputSchema = z.object({
   lat: z.number().describe('The latitude of the location.'),
@@ -50,51 +50,53 @@ export async function getWeatherAnalysis(
   return weatherAnalysisFlow(input);
 }
 
+// This new schema is internal to the prompt, extending the user input
+const PromptInputSchema = GetWeatherAnalysisInputSchema.extend({
+  determinedLocationType: z.enum(['shore', 'ocean', 'land']).describe("The pre-determined type of the location, calculated using a separate geographical API.")
+});
+
 const prompt = ai.definePrompt({
   name: 'weatherAnalysisPrompt',
-  input: {schema: GetWeatherAnalysisInputSchema},
+  input: {schema: PromptInputSchema},
   output: {schema: GetWeatherAnalysisOutputSchema},
   tools: [openWeatherTool],
-  prompt: `You are an expert meteorologist and oceanographer. Your task is to provide a detailed and accurate weather analysis based on a user's location, using external tools to gather real-time data.
+  prompt: `You are an expert meteorologist and oceanographer. Your task is to provide a detailed weather analysis based on a user's location. You will use external tools for real-time data.
 
-  Your entire response for any text field must be in the language specified by the language code: {{{language}}}.
+A separate programmatic check using the OpenStreetMap API has already determined the location's geographical type.
+- **Determined Location Type: '{{{determinedLocationType}}}'**
 
-  User Location:
-  Latitude: {{{lat}}}
-  Longitude: {{{lon}}}
+You MUST adhere to this classification. Set the \`locationType\` field in your response to this exact value ('shore', 'ocean', or 'land').
 
-  Follow these steps precisely:
+Your entire response for any text field must be in the language specified by the language code: {{{language}}}.
 
-  1.  **FETCH REAL-TIME DATA:**
-      - Use the \`getOpenWeatherData\` tool with the provided latitude and longitude to get current weather conditions. This data is the primary source for your analysis.
+User Location:
+Latitude: {{{lat}}}
+Longitude: {{{lon}}}
 
-  2.  **LOCATION TYPE DETERMINATION (CRITICAL):**
-      - Based on the data from the tool and your geographical knowledge, determine the location type using these strict definitions. Your accuracy here is paramount.
-      - You MUST set the \`locationType\` field to one of three values: 'land', 'shore', or 'ocean'.
-      -   'shore': Use for any location on or within 2 kilometers of a major body of **saltwater**, like an ocean or a sea. **Do not** classify locations near freshwater lakes, rivers, or other non-sea water bodies as 'shore'.
-      -   'ocean': Use for any location clearly in the open ocean, more than 2km from any coastline.
-      -   'land': Use for any location that is more than 2 kilometers inland from a major body of **saltwater**. This includes all locations near freshwater bodies.
-      - This determination is critical and dictates the structure of your response.
+Follow these steps precisely:
 
-  3.  **PROVIDE UNIVERSAL WEATHER DATA:**
-      - Set the \`locationName\` from the tool's response.
-      - Provide current \`temperature\`, \`windSpeed\` (convert from m/s to km/h), \`windDirection\`, and \`humidity\` based on the tool's data.
-      - Provide a 72-hour \`forecast\` broken into six 12-hour intervals. Use icons from: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
+1.  **FETCH REAL-TIME DATA:**
+    - Use the \`getOpenWeatherData\` tool with the provided latitude and longitude to get current weather conditions. This data is the primary source for your analysis.
 
-  4.  **CONDITIONAL ANALYSIS (BASED ON STEP 2):**
+2.  **PROVIDE UNIVERSAL WEATHER DATA:**
+    - Set the \`locationName\` from the tool's response.
+    - Provide current \`temperature\`, \`windSpeed\` (convert from m/s to km/h), \`windDirection\`, and \`humidity\` based on the tool's data.
+    - Provide a 72-hour \`forecast\` broken into six 12-hour intervals. Use icons from: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
 
-      **A. IF \`locationType\` IS \`shore\` OR \`ocean\`:**
-      - Perform a cyclone risk analysis. You MUST provide a \`cycloneProbability\` (a percentage from 0-100).
-      - In the \`forecast\`, you MUST include the \`cycloneRiskLevel\` ('none', 'low', 'medium', 'high') for each interval.
-      - You MUST provide a simulated 24-hour \`tides\` forecast. Create a realistic, plausible 24-hour cycle of 2 high and 2 low tides based on the location.
-      - The \`recommendations\` MUST focus on maritime safety, tide warnings, advice for fishermen, and coastal communities based on the cyclone risk.
+3.  **CONDITIONAL ANALYSIS (Based on the pre-determined type):**
 
-      **B. IF \`locationType\` IS \`land\`:**
-      - You MUST OMIT the \`cycloneProbability\` field.
-      - You MUST OMIT the \`tides\` field.
-      - You MUST OMIT the \`cycloneRiskLevel\` field in all forecast intervals.
-      - The \`recommendations\` MUST be general weather advice for a landlocked area.
-      - **CRITICAL:** Do NOT mention cyclones, tides, the sea, fishing, or any maritime-related topics in any text field.
+    **A. IF \`determinedLocationType\` IS \`shore\` OR \`ocean\`:**
+    - Perform a cyclone risk analysis. You MUST provide a \`cycloneProbability\` (a percentage from 0-100).
+    - In the \`forecast\`, you MUST include the \`cycloneRiskLevel\` ('none', 'low', 'medium', 'high') for each interval.
+    - You MUST provide a simulated 24-hour \`tides\` forecast. Create a realistic, plausible 24-hour cycle of 2 high and 2 low tides based on the location.
+    - The \`recommendations\` MUST focus on maritime safety, tide warnings, advice for fishermen, and coastal communities based on the cyclone risk.
+
+    **B. IF \`determinedLocationType\` IS \`land\`:**
+    - You MUST OMIT the \`cycloneProbability\` field.
+    - You MUST OMIT the \`tides\` field.
+    - You MUST OMIT the \`cycloneRiskLevel\` field in all forecast intervals.
+    - The \`recommendations\` MUST be general weather advice for a landlocked area.
+    - **CRITICAL:** Do NOT mention cyclones, tides, the sea, fishing, or any maritime-related topics in any text field.
   `,
 });
 
@@ -106,10 +108,21 @@ const weatherAnalysisFlow = ai.defineFlow(
     outputSchema: GetWeatherAnalysisOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
+    // Determine location type using Overpass API before calling the model
+    const determinedLocationType = await determineLocationType(input.lat, input.lon);
+    
+    const {output} = await prompt({
+        ...input,
+        determinedLocationType, // Pass the determined type to the prompt
+    });
+
     if (!output) {
         throw new Error("Failed to get weather data from AI model.");
     }
+    
+    // Enforce the programmatically determined location type, overriding any hallucination from the model.
+    output.locationType = determinedLocationType;
+
     return output;
   }
 );

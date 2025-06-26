@@ -1,8 +1,9 @@
 'use server';
 /**
- * @fileOverview A Genkit tool to fetch weather data from OpenWeatherMap API.
+ * @fileOverview Genkit tools to fetch data from third-party geo APIs.
  *
- * - openWeatherTool - A tool that fetches current weather and forecast data.
+ * - openWeatherTool - A tool that fetches current weather data from OpenWeatherMap.
+ * - determineLocationType - A function that uses the Overpass API to classify a location.
  */
 
 import { ai } from '@/ai/genkit';
@@ -86,3 +87,52 @@ export const openWeatherTool = ai.defineTool(
     }
   }
 );
+
+
+/**
+ * Determines if a location is on land, shore, or in the ocean using the Overpass API.
+ * @param lat The latitude of the location.
+ * @param lon The longitude of the location.
+ * @returns A promise that resolves to 'shore', 'ocean', or 'land'.
+ */
+export async function determineLocationType(lat: number, lon: number): Promise<'shore' | 'ocean' | 'land'> {
+  const overpassUrl = 'https://overpass-api.de/api/interpreter';
+  const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+
+  // 1. Check for a coastline within 2km to determine if it's 'shore'.
+  const shoreQuery = `[out:json][timeout:10];way(around:2000,${lat},${lon})["natural"="coastline"];out count;`;
+  
+  try {
+    const shoreResponse = await fetch(overpassUrl, { method: 'POST', headers, body: `data=${encodeURIComponent(shoreQuery)}` });
+    if (shoreResponse.ok) {
+        const shoreData = await shoreResponse.json();
+        const wayCount = shoreData.elements[0]?.tags?.ways;
+        if (wayCount && parseInt(wayCount, 10) > 0) {
+            return 'shore';
+        }
+    }
+  } catch (e) {
+    console.error("Overpass API shore check failed:", e);
+    // Continue to the next check
+  }
+
+  // 2. If not shore, check if the point is on a significant water body.
+  const waterQuery = `[out:json][timeout:10];(way(around:1,${lat},${lon})["natural"="water"];relation(around:1,${lat},${lon})["natural"="water"];);out count;`;
+
+  try {
+    const waterResponse = await fetch(overpassUrl, { method: 'POST', headers, body: `data=${encodeURIComponent(waterQuery)}` });
+     if (waterResponse.ok) {
+        const waterData = await waterResponse.json();
+        const totalCount = waterData.elements[0]?.tags?.total;
+        if (totalCount && parseInt(totalCount, 10) > 0) {
+            return 'ocean';
+        }
+     }
+  } catch (e) {
+    console.error("Overpass API water check failed:", e);
+    // Fallback to 'land' if the check fails
+  }
+
+  // 3. Otherwise, it must be land.
+  return 'land';
+}
