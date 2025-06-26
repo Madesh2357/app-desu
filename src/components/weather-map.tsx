@@ -56,9 +56,11 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
 
       // Try to get user's location automatically on load
       map.locate({ enableHighAccuracy: true }).on("locationfound", (e) => {
-        // In React's Strict Mode, the component might unmount and remount.
-        // This check ensures the map container is still in the DOM before we try to manipulate it.
-        if (mapContainerRef.current?.isConnected) {
+        // In React's Strict Mode, a component can be unmounted and remounted,
+        // leaving an async callback like this one tied to a stale, destroyed map instance.
+        // This check ensures we only act if the map instance that fired this event
+        // is still the currently active one.
+        if (mapInstanceRef.current === map) {
             map.flyTo(e.latlng, 10);
             updateMarkerAndSelect(e.latlng);
         }
@@ -72,7 +74,7 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
     // Cleanup function to run when the component unmounts.
     return () => {
       if (mapInstanceRef.current) {
-        // The .remove() method also clears all event listeners, which is crucial here.
+        // The .remove() method also clears all related event listeners, which is crucial here.
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
