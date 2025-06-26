@@ -21,22 +21,10 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// A different icon for "Your Location" to distinguish it.
-const yourLocationIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-
 function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const selectedLocationMarkerRef = useRef<L.Marker | null>(null); // Marker for the location being analyzed
-  const yourLocationMarkerRef = useRef<L.Marker | null>(null);      // Static marker for user's GPS position
   const { toast } = useToast();
 
   useEffect(() => {
@@ -77,15 +65,6 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
               title: "Low Location Accuracy",
               description: `Your location is only accurate to ${Math.round(accuracy)} meters.`,
             });
-        }
-
-        // Set the static green "Your Location" marker
-        if (yourLocationMarkerRef.current) {
-            yourLocationMarkerRef.current.setLatLng(latlng);
-        } else {
-            yourLocationMarkerRef.current = L.marker(latlng, { icon: yourLocationIcon })
-                .addTo(mapInstanceRef.current)
-                .bindPopup("Your Location");
         }
 
         // Set the initial "Selected Location" and run analysis
