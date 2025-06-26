@@ -99,7 +99,7 @@ export async function determineLocationType(lat: number, lon: number): Promise<'
   const overpassUrl = 'https://overpass-api.de/api/interpreter';
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
 
-  // 1. Check for a coastline within 2km to determine if it's 'shore'.
+  // 1. Check for a coastline within 2km to determine if it's 'shore'. This is the most specific check.
   const shoreQuery = `[out:json][timeout:10];way(around:2000,${lat},${lon})["natural"="coastline"];out count;`;
   
   try {
@@ -112,29 +112,31 @@ export async function determineLocationType(lat: number, lon: number): Promise<'
         }
     }
   } catch (e) {
-    console.error("Overpass API shore check failed:", e);
+    // Errors are ignored, we will proceed to the next check.
   }
 
-  // 2. If not shore, use 'is_in' to check if the point is on a landmass.
-  // This query asks "what areas contain this point?"
-  // If it's on land, it will return the country, continent, etc.
-  // If it's in the middle of an ocean, this will return an empty list.
-  const isInQuery = `[out:json][timeout:10];is_in(${lat},${lon});out;`;
+  // 2. If not shore, we distinguish land from ocean by checking for the presence of *any* nearby map data.
+  // Land areas are full of data (nodes), while open oceans are empty. We check a 1km radius.
+  const nodeCheckQuery = `[out:json][timeout:10];node(around:1000,${lat},${lon});out count;`;
   
   try {
-    const isInResponse = await fetch(overpassUrl, { method: 'POST', headers, body: `data=${encodeURIComponent(isInQuery)}` });
-     if (isInResponse.ok) {
-        const isInResponseData = await isInResponse.json();
-        if (isInResponseData.elements.length > 0) {
+    const nodeResponse = await fetch(overpassUrl, { method: 'POST', headers, body: `data=${encodeURIComponent(nodeCheckQuery)}` });
+     if (nodeResponse.ok) {
+        const nodeData = await nodeResponse.json();
+        const nodeCount = nodeData.elements[0]?.tags?.nodes;
+        // If we find any map nodes, it's land.
+        if (nodeCount && parseInt(nodeCount, 10) > 0) {
             return 'land';
         } else {
+            // If the 1km radius is empty, it's ocean.
             return 'ocean';
         }
      }
   } catch (e) {
-    console.error("Overpass API is_in check failed:", e);
+     // Errors are ignored, we will proceed to the fallback.
   }
 
-  // 3. Fallback: if all API calls fail, assume 'land' as the safest default.
+  // 3. Fallback: if all API calls fail, assume 'land' as the safest default to prevent app errors.
+  console.warn("All Overpass API checks failed; falling back to 'land' classification.");
   return 'land';
 }
