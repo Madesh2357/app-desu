@@ -16,22 +16,30 @@ const WeatherMap = dynamic(() => import('@/components/weather-map'), {
   loading: () => <Skeleton className="aspect-video w-full rounded-md" />,
 });
 
+// Define a type for the data stored in localStorage
+type StoredAnalysis = {
+  analysis: GetWeatherAnalysisOutput;
+  location: { lat: number; lon: number };
+};
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<GetWeatherAnalysisOutput | null>(null);
   const [language, setLanguage] = useState('en');
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lon: number } | null>(null);
   const { toast } = useToast();
+  const isInitialMount = useRef(true);
 
-  // Use a ref to store the current language to avoid re-creating the callback
-  const languageRef = useRef(language);
-  languageRef.current = language;
-
-  // Load last analysis from localStorage on initial render
+  // Load last analysis and location from localStorage on initial mount
   useEffect(() => {
     try {
-      const savedAnalysis = localStorage.getItem('lastFishermanAnalysis');
-      if (savedAnalysis) {
-        setAnalysis(JSON.parse(savedAnalysis));
+      const savedDataString = localStorage.getItem('lastFishermanAnalysis');
+      if (savedDataString) {
+        const savedData: StoredAnalysis = JSON.parse(savedDataString);
+        if (savedData.analysis && savedData.location) {
+          setAnalysis(savedData.analysis);
+          setSelectedLocation(savedData.location);
+        }
       }
     } catch (error) {
       console.error("Failed to load analysis from localStorage", error);
@@ -39,26 +47,28 @@ export default function Home() {
     }
   }, []);
 
-  // Define the location select handler with useCallback to stabilize its identity
-  const handleLocationSelect = useCallback(async (lat: number, lon: number) => {
+  // Centralized async function to fetch and set weather analysis
+  const getAnalysis = useCallback(async (lat: number, lon: number, lang: string) => {
     setLoading(true);
     setAnalysis(null);
+    setSelectedLocation({ lat, lon });
+
     try {
-      const result = await fetchWeatherAnalysis({ lat, lon, language: languageRef.current });
+      const result = await fetchWeatherAnalysis({ lat, lon, language: lang });
       setAnalysis(result);
-      // Save successful analysis to localStorage
-      localStorage.setItem('lastFishermanAnalysis', JSON.stringify(result));
+      const dataToStore: StoredAnalysis = { analysis: result, location: { lat, lon } };
+      localStorage.setItem('lastFishermanAnalysis', JSON.stringify(dataToStore));
     } catch (error: any) {
       console.error(error);
       let title = "Error Fetching Weather Analysis";
       let description = "An unknown error occurred. Please try again later.";
 
-      // Check for quota error and provide a fallback
       if (error.message?.includes("429") || error.message?.includes("Quota")) {
-          title = "API Quota Exceeded";
-          description = "Displaying sample data as a fallback. Please check your API key or plan.";
-          setAnalysis(sampleAnalysis);
-          localStorage.setItem('lastFishermanAnalysis', JSON.stringify(sampleAnalysis));
+        title = "API Quota Exceeded";
+        description = "Displaying sample data as a fallback. Please check your API key or plan.";
+        const sampleDataToStore: StoredAnalysis = { analysis: sampleAnalysis, location: { lat, lon } };
+        setAnalysis(sampleAnalysis);
+        localStorage.setItem('lastFishermanAnalysis', JSON.stringify(sampleDataToStore));
       } else if (error.message?.includes('API key')) {
         description = "The Google AI API key is missing or invalid. Please add GOOGLE_API_KEY=your_key_here to the .env file and restart the server."
       } else if (error instanceof Error) {
@@ -74,6 +84,26 @@ export default function Home() {
       setLoading(false);
     }
   }, [toast]);
+
+  // Handler for map selection, calls the main analysis function
+  const handleLocationSelect = useCallback((lat: number, lon: number) => {
+    getAnalysis(lat, lon, language);
+  }, [getAnalysis, language]);
+
+  // Effect to re-fetch analysis when the language changes
+  useEffect(() => {
+    // Skip the initial render to prevent fetching with default state
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (selectedLocation) {
+      getAnalysis(selectedLocation.lat, selectedLocation.lon, language);
+    }
+  // We ONLY want this to re-run when language changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background font-body">
