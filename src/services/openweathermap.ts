@@ -113,26 +113,28 @@ export async function determineLocationType(lat: number, lon: number): Promise<'
     }
   } catch (e) {
     console.error("Overpass API shore check failed:", e);
-    // Continue to the next check
   }
 
-  // 2. If not shore, check if the point is on a significant water body.
-  const waterQuery = `[out:json][timeout:10];(way(around:1,${lat},${lon})["natural"="water"];relation(around:1,${lat},${lon})["natural"="water"];);out count;`;
-
+  // 2. If not shore, use 'is_in' to check if the point is on a landmass.
+  // This query asks "what areas contain this point?"
+  // If it's on land, it will return the country, continent, etc.
+  // If it's in the middle of an ocean, this will return an empty list.
+  const isInQuery = `[out:json][timeout:10];is_in(${lat},${lon});out;`;
+  
   try {
-    const waterResponse = await fetch(overpassUrl, { method: 'POST', headers, body: `data=${encodeURIComponent(waterQuery)}` });
-     if (waterResponse.ok) {
-        const waterData = await waterResponse.json();
-        const totalCount = waterData.elements[0]?.tags?.total;
-        if (totalCount && parseInt(totalCount, 10) > 0) {
+    const isInResponse = await fetch(overpassUrl, { method: 'POST', headers, body: `data=${encodeURIComponent(isInQuery)}` });
+     if (isInResponse.ok) {
+        const isInResponseData = await isInResponse.json();
+        if (isInResponseData.elements.length > 0) {
+            return 'land';
+        } else {
             return 'ocean';
         }
      }
   } catch (e) {
-    console.error("Overpass API water check failed:", e);
-    // Fallback to 'land' if the check fails
+    console.error("Overpass API is_in check failed:", e);
   }
 
-  // 3. Otherwise, it must be land.
+  // 3. Fallback: if all API calls fail, assume 'land' as the safest default.
   return 'land';
 }
