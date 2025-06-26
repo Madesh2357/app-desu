@@ -3,6 +3,7 @@
 import { useRef, useEffect, memo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useToast } from "@/hooks/use-toast";
 
 interface WeatherMapProps {
   onLocationSelect: (lat: number, lon: number) => void;
@@ -21,14 +22,15 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-
 function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // This effect runs only once on mount, and the check ensures the map is initialized only once.
+    let isMounted = true;
+    
     if (mapContainerRef.current && !mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current).setView(INITIAL_CENTER, INITIAL_ZOOM);
       mapInstanceRef.current = map;
@@ -38,7 +40,6 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
       }).addTo(map);
 
       const updateMarkerAndSelect = (latlng: L.LatLng) => {
-        // Add a guard to ensure map instance exists before using it
         if (!mapInstanceRef.current) return;
         
         if (markerRef.current) {
@@ -54,33 +55,72 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
         updateMarkerAndSelect(e.latlng);
       });
 
-      // Try to get user's location automatically on load
-      map.locate({ enableHighAccuracy: true }).on("locationfound", (e) => {
-        // In React's Strict Mode, a component can be unmounted and remounted,
-        // leaving an async callback like this one tied to a stale, destroyed map instance.
-        // This check ensures we only act if the map instance that fired this event
-        // is still the currently active one.
-        if (mapInstanceRef.current === map) {
+      const locateWithBrowser = () => {
+        // Ensure map instance exists and component is mounted
+        if (!mapInstanceRef.current || !isMounted) return;
+
+        mapInstanceRef.current.locate({ enableHighAccuracy: true }).on("locationfound", (e) => {
+          if (mapInstanceRef.current === map && isMounted) {
             map.flyTo(e.latlng, 10);
             updateMarkerAndSelect(e.latlng);
+          }
+        }).on("locationerror", () => {
+          if (!isMounted) return;
+          console.warn("Could not fetch initial location via browser. Please click the map.");
+          toast({
+            title: "Location Not Found",
+            description: "Could not determine your location. Please click the map to select a location.",
+          });
+        });
+      };
+      
+      const getInitialLocation = async () => {
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+
+        if (apiKey) {
+          try {
+            const response = await fetch(`https://www.googleapis.com/geolocation/v1/geolocate?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+            if (!response.ok) throw new Error(`API failed: ${response.status}`);
+            const data = await response.json();
+            const latlng = L.latLng(data.location.lat, data.location.lng);
+            
+            if (isMounted && mapInstanceRef.current === map) {
+              map.flyTo(latlng, 10);
+              updateMarkerAndSelect(latlng);
+            }
+          } catch (error) {
+            if (!isMounted) return;
+            console.error("Google Geolocation API failed, falling back to browser API.", error);
+            toast({
+              variant: "destructive",
+              title: "Google Location Failed",
+              description: "Falling back to standard browser location. This may be less accurate.",
+            });
+            locateWithBrowser();
+          }
+        } else {
+          if (!isMounted) return;
+          console.warn("NEXT_PUBLIC_GOOGLE_API_KEY is not set. Falling back to browser location.");
+          locateWithBrowser();
         }
-      }).on("locationerror", () => {
-        // If it fails (e.g. permission denied, no GPS signal), do nothing.
-        // The user can still click the map to get a forecast.
-        console.warn("Could not fetch initial location. Please click the map.");
-      });
+      };
+
+      getInitialLocation();
     }
 
-    // Cleanup function to run when the component unmounts.
     return () => {
+      isMounted = false;
       if (mapInstanceRef.current) {
-        // The .remove() method also clears all related event listeners, which is crucial here.
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-    // By keeping the dependency array empty, we ensure this effect runs only once on mount,
-    // which is the correct behavior for initializing a map library like Leaflet.
+  // The empty dependency array ensures this effect runs only once on mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -92,5 +132,4 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
 }
 
 const WeatherMap = memo(BaseWeatherMap);
-
 export default WeatherMap;
