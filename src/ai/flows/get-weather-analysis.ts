@@ -9,6 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { openWeatherTool } from '@/services/openweathermap';
 
 const GetWeatherAnalysisInputSchema = z.object({
   lat: z.number().describe('The latitude of the location.'),
@@ -19,11 +20,17 @@ export type GetWeatherAnalysisInput = z.infer<typeof GetWeatherAnalysisInputSche
 
 const GetWeatherAnalysisOutputSchema = z.object({
     isCoastal: z.boolean().describe("True if the location is on a seashore or an oceanic region. False for all land locations."),
+    locationName: z.string().describe("The name of the location provided by the weather service (e.g., 'Chennai')."),
     temperature: z.number().describe("The current temperature in Celsius."),
     windSpeed: z.string().describe("The current wind speed, including units (e.g., '15 km/h')."),
     windDirection: z.string().describe("The current wind direction (e.g., 'from the SW')."),
     humidity: z.number().describe("The current humidity as a percentage."),
     cycloneProbability: z.number().min(0).max(100).describe("The estimated probability of a cyclone forming or being present now, from 0-100. This field is ONLY required if 'isCoastal' is true, otherwise it must be omitted.").optional(),
+    tides: z.array(z.object({
+        time: z.string().describe("The time of the tide (e.g., '04:30 AM')."),
+        type: z.enum(['High', 'Low']).describe("The type of the tide."),
+        height: z.string().describe("The estimated height of the tide in meters (e.g., '1.2m').")
+    })).describe("A simulated 24-hour tide forecast for coastal locations. This field is ONLY required if 'isCoastal' is true, otherwise it must be omitted.").optional(),
     forecast: z.array(z.object({
         time: z.string().describe("The time period for this forecast (e.g., 'Next 12 Hours', '12-24 Hours')."),
         summary: z.string().describe("A brief, simple summary of the weather (e.g., 'Clear skies', 'Chance of rain')."),
@@ -47,43 +54,45 @@ const prompt = ai.definePrompt({
   name: 'weatherAnalysisPrompt',
   input: {schema: GetWeatherAnalysisInputSchema},
   output: {schema: GetWeatherAnalysisOutputSchema},
-  prompt: `You are an expert meteorologist with access to advanced climate models and historical weather data. Your primary task is to provide a weather analysis tailored to the user's location.
+  tools: [openWeatherTool],
+  prompt: `You are an expert meteorologist and oceanographer. Your task is to provide a detailed and accurate weather analysis based on a user's location, using external tools to gather real-time data.
 
   Your entire response for any text field must be in the language specified by the language code: {{{language}}}.
 
-  Location:
+  User Location:
   Latitude: {{{lat}}}
   Longitude: {{{lon}}}
 
   Follow these steps precisely:
 
-  1.  **COASTAL DETERMINATION (CRITICAL):**
-      First, determine if the coordinates are for an oceanic region or a seashore.
+  1.  **FETCH REAL-TIME DATA:**
+      - Use the \`getOpenWeatherData\` tool with the provided latitude and longitude to get current weather conditions. This data is the primary source for your analysis.
+
+  2.  **COASTAL DETERMINATION (CRITICAL):**
+      - Based on the data from the tool (like location name) and your own geographical knowledge, determine if the coordinates are for an oceanic region or a seashore.
       - If YES, set \`isCoastal\` to \`true\`.
       - If NO (it is a landlocked location), set \`isCoastal\` to \`false\`.
-      This determination dictates the rest of your response.
+      - This determination is critical and dictates the structure of your response.
 
-  2.  **PROVIDE UNIVERSAL WEATHER DATA:**
-      Regardless of coastal status, provide the following:
-      - \`temperature\`: Current temperature in Celsius.
-      - \`windSpeed\`: Current wind speed in km/h.
-      - \`windDirection\`: Current wind direction.
-      - \`humidity\`: Current humidity percentage.
-      - \`forecast\`: A 72-hour forecast broken into six 12-hour intervals. Each interval needs \`time\`, \`summary\`, \`icon\`, \`temperature\`, \`windSpeed\`, and \`humidity\`. Use icons from: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
+  3.  **PROVIDE UNIVERSAL WEATHER DATA:**
+      - Set the \`locationName\` from the tool's response.
+      - Provide current \`temperature\`, \`windSpeed\` (convert from m/s to km/h), \`windDirection\`, and \`humidity\` based on the tool's data.
+      - Provide a 72-hour \`forecast\` broken into six 12-hour intervals. Use icons from: 'Sun', 'Moon', 'CloudSun', 'CloudMoon', 'Cloud', 'Cloudy', 'CloudRain', 'CloudLightning', 'Wind', 'Sunrise', 'Sunset'.
 
-  3.  **CONDITIONAL ANALYSIS (BASED ON STEP 1):**
+  4.  **CONDITIONAL ANALYSIS (BASED ON STEP 2):**
 
       **A. IF \`isCoastal\` IS \`true\`:**
-      - Perform a cyclone risk analysis.
-      - You MUST provide \`cycloneProbability\` (a percentage from 0-100).
+      - Perform a cyclone risk analysis. You MUST provide a \`cycloneProbability\` (a percentage from 0-100).
       - In the \`forecast\`, you MUST include the \`cycloneRiskLevel\` ('none', 'low', 'medium', 'high') for each interval.
-      - The \`recommendations\` MUST focus on maritime safety, advice for fishermen, and coastal communities based on the cyclone risk.
+      - You MUST provide a simulated 24-hour \`tides\` forecast. Since you don't have a direct tide feed, create a realistic, plausible 24-hour cycle of 2 high and 2 low tides based on the location.
+      - The \`recommendations\` MUST focus on maritime safety, tide warnings, advice for fishermen, and coastal communities based on the cyclone risk.
 
       **B. IF \`isCoastal\` IS \`false\`:**
-      - You MUST NOT provide the \`cycloneProbability\` field.
-      - You MUST NOT provide the \`cycloneRiskLevel\` field in any forecast interval.
+      - You MUST OMIT the \`cycloneProbability\` field.
+      - You MUST OMIT the \`tides\` field.
+      - You MUST OMIT the \`cycloneRiskLevel\` field in all forecast intervals.
       - The \`recommendations\` MUST be general weather advice for a landlocked area.
-      - **IMPORTANT:** Absolutely DO NOT mention cyclones, cyclone risk, the sea, fishing, or any maritime-related warnings in the \`recommendations\` or any other text field.
+      - **CRITICAL:** Do NOT mention cyclones, tides, the sea, fishing, or any maritime-related topics in any text field.
   `,
 });
 

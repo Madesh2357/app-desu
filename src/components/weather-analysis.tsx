@@ -2,8 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { GetWeatherAnalysisOutput } from "@/ai/flows/get-weather-analysis";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Thermometer, Wind, Droplets, ShieldAlert, CalendarClock, BadgeInfo } from "lucide-react";
+import { Thermometer, Wind, Droplets, ShieldAlert, CalendarClock, BadgeInfo, Waves, ArrowDown, ArrowUp, LandPlot, Sailboat } from "lucide-react";
 import DynamicIcon from "./dynamic-icon";
+import { Badge } from "./ui/badge";
 
 type WeatherAnalysisProps = {
   analysis: GetWeatherAnalysisOutput | null;
@@ -82,7 +83,22 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base font-headline font-medium">Weather Analysis</CardTitle>
+        <div className="flex justify-between items-start">
+            <CardTitle className="text-base font-headline font-medium mb-1">
+                Weather Analysis for <span className="text-primary">{analysis.locationName}</span>
+            </CardTitle>
+            {analysis.isCoastal ? (
+                <Badge variant="secondary" className="flex items-center gap-1.5">
+                    <Sailboat className="h-3 w-3"/>
+                    Coastal
+                </Badge>
+            ) : (
+                <Badge variant="secondary" className="flex items-center gap-1.5">
+                    <LandPlot className="h-3 w-3"/>
+                    Inland
+                </Badge>
+            )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm">
@@ -115,6 +131,25 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
             <div>
                 <h3 className="font-semibold text-sm mb-2 flex items-center"><ShieldAlert className="mr-2 h-4 w-4"/> Current Cyclone Probability</h3>
                 <p className={`text-2xl font-bold ${probabilityColor}`}>{analysis.cycloneProbability}%</p>
+            </div>
+          </>
+        )}
+
+        {analysis.isCoastal && analysis.tides && analysis.tides.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="font-semibold text-sm mb-2 flex items-center"><Waves className="mr-2 h-4 w-4"/> 24-Hour Tide Forecast</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                  {analysis.tides.map((tide, index) => (
+                      <div key={index} className="flex flex-col items-center p-2 rounded-md bg-muted/50">
+                          <p className="text-xs font-semibold">{tide.time}</p>
+                          {tide.type === 'High' ? <ArrowUp className="h-5 w-5 my-1 text-primary"/> : <ArrowDown className="h-5 w-5 my-1 text-secondary-foreground"/>}
+                          <p className="text-sm font-bold">{tide.type} Tide</p>
+                          <p className="text-xs text-muted-foreground">{tide.height}</p>
+                      </div>
+                  ))}
+              </div>
             </div>
           </>
         )}
