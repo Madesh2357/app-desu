@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { GetWeatherAnalysisOutput } from "@/ai/flows/get-weather-analysis";
@@ -23,6 +24,19 @@ const CycloneRiskIndicator = ({ level }: { level: 'low' | 'medium' | 'high' | 'n
     return <ShieldAlert className={`h-4 w-4 mt-1 ${styles[level]}`} title={`Cyclone Risk: ${level}`} />;
 };
 
+const iconToEmoji: { [key: string]: string } = {
+    Sun: '☀️',
+    Moon: '🌙',
+    CloudSun: '⛅️',
+    CloudMoon: '☁️🌙',
+    Cloud: '☁️',
+    Cloudy: '☁️',
+    CloudRain: '🌧️',
+    CloudLightning: '⛈️',
+    Wind: '💨',
+    Sunrise: '🌅',
+    Sunset: '🌇',
+};
 
 export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
   if (loading) {
@@ -109,7 +123,7 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
                 <Thermometer className="h-5 w-5 text-muted-foreground" />
                 <div>
                     <p className="text-muted-foreground">Temperature</p>
-                    <p className="font-semibold">{analysis.temperature}°C</p>
+                    <p className="font-semibold">{analysis.temperature}°C / {Math.round(analysis.temperature * 9 / 5 + 32)}°F</p>
                 </div>
             </div>
             <div className="flex items-center gap-2">
@@ -167,7 +181,7 @@ export function WeatherAnalysis({ analysis, loading }: WeatherAnalysisProps) {
                 <p className="text-xs font-semibold">{item.time}</p>
                 <DynamicIcon name={item.icon} className="h-8 w-8 my-1 text-accent" />
                 <p className="text-xs font-bold">{item.temperature}</p>
-                <p className="text-xs text-muted-foreground mt-1 flex-grow">{item.summary}</p>
+                <p className="text-xs text-muted-foreground mt-1 flex-grow">{iconToEmoji[item.icon] || ''} {item.summary}</p>
                 {item.cycloneRiskLevel && <CycloneRiskIndicator level={item.cycloneRiskLevel} />}
               </div>
             ))}

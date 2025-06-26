@@ -1,12 +1,15 @@
+
 "use client";
 
 import { useRef, useEffect, memo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useToast } from "@/hooks/use-toast";
+import type { GetWeatherAnalysisOutput } from "@/ai/flows/get-weather-analysis";
 
 interface WeatherMapProps {
   onLocationSelect: (lat: number, lon: number) => void;
+  analysis: GetWeatherAnalysisOutput | null;
 }
 
 const INITIAL_CENTER: L.LatLngTuple = [20.5937, 78.9629];
@@ -21,11 +24,22 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
+function BaseWeatherMap({ onLocationSelect, analysis }: WeatherMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const selectedLocationMarkerRef = useRef<L.Marker | null>(null); // Marker for the location being analyzed
+  const selectedLocationMarkerRef = useRef<L.Marker | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (selectedLocationMarkerRef.current) {
+        if (analysis?.locationName) {
+            selectedLocationMarkerRef.current.bindPopup(analysis.locationName).openPopup();
+        } else {
+            // When analysis is null (because we're fetching a new one), show a loading state.
+            selectedLocationMarkerRef.current.bindPopup("Analyzing location...").openPopup();
+        }
+    }
+  }, [analysis]);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,10 +59,9 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
         if (selectedLocationMarkerRef.current) {
           selectedLocationMarkerRef.current.setLatLng(latlng);
         } else {
-          // Default blue marker
+          // Create the marker. The popup content will be managed by the other useEffect hook.
           selectedLocationMarkerRef.current = L.marker(latlng).addTo(mapInstanceRef.current);
         }
-        selectedLocationMarkerRef.current.bindPopup("Selected Location").openPopup();
         onLocationSelect(latlng.lat, latlng.lng);
       };
 
@@ -69,7 +82,7 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
 
         // Set the initial "Selected Location" and run analysis
         updateSelectedLocation(latlng);
-        map.flyTo(latlng, 15); // Increased zoom to 15 for better perceived accuracy
+        map.flyTo(latlng, 15);
       }
 
       const locateWithBrowser = () => {

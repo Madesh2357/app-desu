@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -111,7 +112,7 @@ export default function Home() {
       <main className="flex-1 p-4 md:p-6 lg:p-8">
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 min-h-[60vh] lg:min-h-0">
-             <WeatherMap onLocationSelect={handleLocationSelect} />
+             <WeatherMap onLocationSelect={handleLocationSelect} analysis={analysis} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
             <Alerts analysis={analysis} loading={loading} />
