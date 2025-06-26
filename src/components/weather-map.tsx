@@ -13,7 +13,6 @@ const INITIAL_CENTER: L.LatLngTuple = [20.5937, 78.9629];
 const INITIAL_ZOOM = 5;
 
 // Fix for default icon path issue with bundlers.
-// This needs to run only once.
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -22,10 +21,22 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+// A different icon for "Your Location" to distinguish it.
+const yourLocationIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+
 function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  const selectedLocationMarkerRef = useRef<L.Marker | null>(null); // Marker for the location being analyzed
+  const yourLocationMarkerRef = useRef<L.Marker | null>(null);      // Static marker for user's GPS position
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,37 +50,56 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
 
-      const updateMarkerAndSelect = (latlng: L.LatLng) => {
+      // This function handles the "Selected Location" marker and triggers the analysis
+      const updateSelectedLocation = (latlng: L.LatLng) => {
         if (!mapInstanceRef.current) return;
         
-        if (markerRef.current) {
-          markerRef.current.setLatLng(latlng);
+        if (selectedLocationMarkerRef.current) {
+          selectedLocationMarkerRef.current.setLatLng(latlng);
         } else {
-          markerRef.current = L.marker(latlng).addTo(mapInstanceRef.current);
+          // Default blue marker
+          selectedLocationMarkerRef.current = L.marker(latlng).addTo(mapInstanceRef.current);
         }
-        markerRef.current.bindPopup("Selected Location").openPopup();
+        selectedLocationMarkerRef.current.bindPopup("Selected Location").openPopup();
         onLocationSelect(latlng.lat, latlng.lng);
       };
 
       map.on('click', (e) => {
-        updateMarkerAndSelect(e.latlng);
+        updateSelectedLocation(e.latlng);
       });
 
+      // This function handles finding the location and setting the initial markers
+      const handleLocationFound = (latlng: L.LatLng, accuracy: number) => {
+        if (!mapInstanceRef.current || !isMounted || mapInstanceRef.current !== map) return;
+
+        if (accuracy > 100) {
+            toast({
+              title: "Low Location Accuracy",
+              description: `Your location is only accurate to ${Math.round(accuracy)} meters.`,
+            });
+        }
+
+        // Set the static green "Your Location" marker
+        if (yourLocationMarkerRef.current) {
+            yourLocationMarkerRef.current.setLatLng(latlng);
+        } else {
+            yourLocationMarkerRef.current = L.marker(latlng, { icon: yourLocationIcon })
+                .addTo(mapInstanceRef.current)
+                .bindPopup("Your Location");
+        }
+
+        // Set the initial "Selected Location" and run analysis
+        updateSelectedLocation(latlng);
+        map.flyTo(latlng, 15); // Increased zoom to 15 for better perceived accuracy
+      }
+
       const locateWithBrowser = () => {
-        // Ensure map instance exists and component is mounted
         if (!mapInstanceRef.current || !isMounted) return;
 
         mapInstanceRef.current.locate({ enableHighAccuracy: true }).on("locationfound", (e) => {
-          if (mapInstanceRef.current === map && isMounted) {
-            if (e.accuracy > 100) {
-              toast({
-                title: "Low Location Accuracy",
-                description: `Your location is only accurate to ${Math.round(e.accuracy)} meters.`,
-              });
+            if (mapInstanceRef.current === map && isMounted) {
+                handleLocationFound(e.latlng, e.accuracy);
             }
-            map.flyTo(e.latlng, 13);
-            updateMarkerAndSelect(e.latlng);
-          }
         }).on("locationerror", () => {
           if (!isMounted) return;
           console.warn("Could not fetch initial location via browser. Please click the map.");
@@ -92,17 +122,10 @@ function BaseWeatherMap({ onLocationSelect }: WeatherMapProps) {
             });
             if (!response.ok) throw new Error(`API failed: ${response.status}`);
             const data = await response.json();
-            const latlng = L.latLng(data.location.lat, data.location.lng);
             
             if (isMounted && mapInstanceRef.current === map) {
-              if (data.accuracy > 100) {
-                toast({
-                  title: "Low Location Accuracy",
-                  description: `Your location is only accurate to ${Math.round(data.accuracy)} meters.`,
-                });
-              }
-              map.flyTo(latlng, 13);
-              updateMarkerAndSelect(latlng);
+              const latlng = L.latLng(data.location.lat, data.location.lng);
+              handleLocationFound(latlng, data.accuracy);
             }
           } catch (error) {
             if (!isMounted) return;
